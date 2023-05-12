@@ -115,7 +115,7 @@ ActionItem::~ActionItem() {
 
 
 
-/*============================== Grammar ==============================*/
+/*============================== SyntaxAnalyser ==============================*/
 
 void clearTmp(Productions& productions, ProductionRight& productionRight) {
 	productionRight.clear();
@@ -124,7 +124,8 @@ void clearTmp(Productions& productions, ProductionRight& productionRight) {
 }
 
 SyntaxAnalyser::SyntaxAnalyser() {
-
+	itemSetRec.resize(G_MAXITEMSETSIZE);
+	DFA.resize(G_MAXDFASIZE);
 }
 
 SyntaxAnalyser::~SyntaxAnalyser() {
@@ -385,10 +386,11 @@ void SyntaxAnalyser::show() {
 }
 
 
-void SyntaxAnalyser::analyseLR1() {
+void SyntaxAnalyser::generateDFA() {
 	stack<int> stk;
 
 	int cnt = 0;
+	/*
 	LR1ItemSet I = {
 		{
 			{pair<string, vector<string>>(string("S'"),{S}),0,{string("#")}}
@@ -396,9 +398,11 @@ void SyntaxAnalyser::analyseLR1() {
 		{
 		}
 	};
-	// I.ItemSet.insert(LR1Item(pair<vn, ProductionRight>("S'", { S }), 0, { "#" }));
+	*/
+	LR1ItemSet I;
+	I.ItemSet.insert(LR1Item(pair<vn, ProductionRight>("S'", { S }), 0, { "#" }));
 	CLOSURE(I);
-	stateLR1ItemSetMap[cnt] = I;
+	itemSetRec[cnt] = I;
 
 	stk.push(cnt++);
 
@@ -408,38 +412,30 @@ void SyntaxAnalyser::analyseLR1() {
 		stk.pop();
 
 		// 取栈顶项目集的.后面的字符
-		vector<string> nextV = generateNextV(stateLR1ItemSetMap[now]);
+		vector<string> nextV = generateNextV(itemSetRec[now]);
 
 		// 遍历所有字符
 		for (int i = 0; i < nextV.size(); i++) {
-			LR1ItemSet item = GO(stateLR1ItemSetMap[now], nextV[i]);
-			int index = -1;
-			for (auto j = stateLR1ItemSetMap.begin(); j != stateLR1ItemSetMap.end(); j++) {
-				if (j->second == item) {
-					index = j->first;
-					break;
-				}
-			}
-			if (index == -1) {
-				// DFA[pair<state, string>(now, nextV[i])] = cnt;
-				stateLR1ItemSetMap[now].next[nextV[i]] = cnt;
-				stateLR1ItemSetMap[cnt] = item;
+			LR1ItemSet item = GO(itemSetRec[now], nextV[i]);
+			int index = find(itemSetRec.begin(), itemSetRec.end(), item) - itemSetRec.begin();
+			if (index == itemSetRec.size()) {
+				DFA[now].go[nextV[i]] = cnt;
+				itemSetRec[cnt] = item;
 				stk.push(cnt++);
 			}
 			else {
-				// DFA[pair<state, string>(now, nextV[i])] = cnt;
-				stateLR1ItemSetMap[now].next[nextV[i]] = index;
+				DFA[now].go[nextV[i]] = index;
 			}
 		}
 	}
 }
 
 void SyntaxAnalyser::generateLR1Table() {
-	for (auto i = stateLR1ItemSetMap.begin(); i != stateLR1ItemSetMap.end(); i++) {
+	for (auto i = 0; i < itemSetRec.size(); i++) {
 		vector<ActionItem> Action(VT.size());
 		vector<int> Goto(VN.size(), -1);
-		set<LR1Item> I = i->second.ItemSet;
-		map<string, int> next = i->second.next;
+		set<LR1Item> I = itemSetRec[i].ItemSet;
+		map<string, int> next = DFA[i].go;
 		for (auto j = next.begin(); j != next.end(); j++) {
 			bool flag = false;
 			// 遍历VN集
@@ -463,7 +459,7 @@ void SyntaxAnalyser::generateLR1Table() {
 					}
 				}
 			}
-			//
+			// 不存在
 			if (!flag) {
 				cerr << "ERROR: 生成ACTION_GOTO表错误!" << endl;
 				exit(ERROR_SYNTAX_ANALYSE);
@@ -489,16 +485,14 @@ void SyntaxAnalyser::generateLR1Table() {
 				}
 			}
 		}
-		ACTION[i->first] = Action;
-		GOTO[i->first] = Goto;
+		ACTION[i] = Action;
+		GOTO[i] = Goto;
 	}
 }
 
 void SyntaxAnalyser::analyse() {
 	this->readGrammar();
 	this->generateFIRST();
-	this->analyseLR1();
+	this->generateDFA();
 	this->generateLR1Table();
 }
-
-
