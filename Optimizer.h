@@ -23,7 +23,7 @@ struct DAGitem
 	int right_child = -1;
 	int tri_child = -1;
 	bool isremain = false;
-	TASitem code;
+	Quaternion code;
 	bool operator== (DAGitem b)
 	{
 		bool f1 = this->isleaf == b.isleaf;
@@ -49,11 +49,11 @@ class optimizerAnalysis
 {
 private:
 	map<int, string> name_table;
-	symbolTable* global_table;
+	SymbolTable* global_table;
 	map<int, string> label_map;
 	int temp_counter = 0;
 	vector<vector<DAGitem>> DAG_group;
-	vector<TASitem> unoptimized_code;
+	vector<Quaternion> unoptimized_code;
 	vector<blockItem> unoptimized_block;
 	bool preOptimize();
 	void partition();
@@ -73,9 +73,9 @@ private:
 		return true;
 	}
 public:
-	vector<TASitem> intermediate_code;
+	vector<Quaternion> intermediate_code;
 	vector<blockItem> block_group;
-	optimizerAnalysis(map<int, string> nt, symbolTable* gt, vector<TASitem> ic);
+	optimizerAnalysis(map<int, string> nt, SymbolTable* gt, vector<Quaternion> ic);
 	void showIntermediateCode();
 	void showBlockGroup();
 	void showDAG();

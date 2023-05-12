@@ -1,7 +1,4 @@
 ﻿  IntermediateCodeGenerater.cpp
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SemanticAnalyser.h(70,22): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SemanticAnalyser.h(83,22): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SemanticAnalyser.h(94,22): warning C4018: “<”: 有符号/无符号不匹配
 D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\IntermediateCodeGenerater.cpp(14,22): warning C4018: “<”: 有符号/无符号不匹配
 D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\IntermediateCodeGenerater.cpp(163,26): warning C4018: “<”: 有符号/无符号不匹配
 D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\IntermediateCodeGenerater.cpp(174,23): warning C4018: “<”: 有符号/无符号不匹配
@@ -14,45 +11,11 @@ D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\Intermedi
 D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\IntermediateCodeGenerater.cpp(260,20): warning C4018: “<”: 有符号/无符号不匹配
 D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\IntermediateCodeGenerater.cpp(282,21): warning C4018: “<”: 有符号/无符号不匹配
 D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\IntermediateCodeGenerater.cpp(303,20): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\IntermediateCodeGenerater.cpp(338,22): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\IntermediateCodeGenerater.cpp(362,22): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\IntermediateCodeGenerater.cpp(915,22): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\IntermediateCodeGenerater.cpp(980,23): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\IntermediateCodeGenerater.cpp(1011,23): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\IntermediateCodeGenerater.cpp(1049,22): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\IntermediateCodeGenerater.cpp(1062,23): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\IntermediateCodeGenerater.cpp(1073,21): warning C4018: “<”: 有符号/无符号不匹配
-  ObjectCodeGenerater.cpp
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SemanticAnalyser.h(70,22): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SemanticAnalyser.h(83,22): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SemanticAnalyser.h(94,22): warning C4018: “<”: 有符号/无符号不匹配
+  main.cpp
 D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\Optimizer.h(37,22): warning C4018: “<”: 有符号/无符号不匹配
 D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\Optimizer.h(37,48): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\ObjectCodeGenerater.cpp(87,22): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\ObjectCodeGenerater.cpp(112,23): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\ObjectCodeGenerater.cpp(124,21): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\ObjectCodeGenerater.cpp(158,22): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\ObjectCodeGenerater.cpp(163,24): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\ObjectCodeGenerater.cpp(188,22): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\ObjectCodeGenerater.cpp(227,23): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\ObjectCodeGenerater.cpp(280,35): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\ObjectCodeGenerater.cpp(284,22): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\ObjectCodeGenerater.cpp(325,25): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\ObjectCodeGenerater.cpp(352,25): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\ObjectCodeGenerater.cpp(379,25): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\ObjectCodeGenerater.cpp(423,25): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\ObjectCodeGenerater.cpp(450,25): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\ObjectCodeGenerater.cpp(477,25): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\ObjectCodeGenerater.cpp(851,25): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\ObjectCodeGenerater.cpp(862,25): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\ObjectCodeGenerater.cpp(867,22): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\ObjectCodeGenerater.cpp(875,23): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\ObjectCodeGenerater.cpp(886,23): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\ObjectCodeGenerater.cpp(897,21): warning C4018: “<”: 有符号/无符号不匹配
+D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\main.cpp(28,24): warning C4018: “<”: 有符号/无符号不匹配
   Optimizer.cpp
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SemanticAnalyser.h(70,22): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SemanticAnalyser.h(83,22): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SemanticAnalyser.h(94,22): warning C4018: “<”: 有符号/无符号不匹配
 D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\Optimizer.h(37,22): warning C4018: “<”: 有符号/无符号不匹配
 D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\Optimizer.h(37,48): warning C4018: “<”: 有符号/无符号不匹配
 D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\Optimizer.cpp(32,21): warning C4018: “<”: 有符号/无符号不匹配
@@ -93,31 +56,5 @@ D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\Optimizer
 D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\Optimizer.cpp(776,23): warning C4018: “<”: 有符号/无符号不匹配
 D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\Optimizer.cpp(780,22): warning C4018: “<”: 有符号/无符号不匹配
 D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\Optimizer.cpp(792,24): warning C4018: “<”: 有符号/无符号不匹配
-  SyntaxAnalyser.cpp
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SyntaxAnalyser.cpp(63,20): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SyntaxAnalyser.cpp(71,20): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SyntaxAnalyser.cpp(158,22): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SyntaxAnalyser.cpp(232,23): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SyntaxAnalyser.cpp(236,25): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SyntaxAnalyser.cpp(260,20): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SyntaxAnalyser.cpp(263,25): warning C4018: “>=”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SyntaxAnalyser.cpp(271,22): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SyntaxAnalyser.cpp(283,24): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SyntaxAnalyser.cpp(289,23): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SyntaxAnalyser.cpp(315,20): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SyntaxAnalyser.cpp(328,19): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SyntaxAnalyser.cpp(341,19): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SyntaxAnalyser.cpp(363,21): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SyntaxAnalyser.cpp(371,24): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SyntaxAnalyser.cpp(382,21): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SyntaxAnalyser.cpp(418,21): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SyntaxAnalyser.cpp(443,21): warning C4018: “<”: 有符号/无符号不匹配
-  main.cpp
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SemanticAnalyser.h(70,22): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SemanticAnalyser.h(83,22): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\SemanticAnalyser.h(94,22): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\Optimizer.h(37,22): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\Optimizer.h(37,48): warning C4018: “<”: 有符号/无符号不匹配
-D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\compiler\main.cpp(28,24): warning C4018: “<”: 有符号/无符号不匹配
   正在生成代码...
   compiler.vcxproj -> D:\WorkSpace\Complusory\CompilationPrinciple\project\compiler\Debug\compiler.exe

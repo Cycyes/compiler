@@ -7,14 +7,14 @@ class syntaxAnalysis
 {
 private:
 	int retcode;
-	void _genTreeLevel(treeNode* nownode, int nowlevel);
-	void _showTree2(treeNode* nownode);
+	void _genTreeLevel(SyntaxTreeNode* nownode, int nowlevel);
+	void _showTree2(SyntaxTreeNode* nownode);
 public:
 	SyntaxAnalyser G;
 	LexcalAnalyser L;
-	semanticAnalysis S;
+	SemanticAnalyser S;
 	vector<vector<vector<string>>> history;
-	treeNode* reductionTreeRoot = NULL;
+	SyntaxTreeNode* reductionTreeRoot = NULL;
 	int maxTreeLevel = 0;
 	int leafNum = 0;
 	~syntaxAnalysis();

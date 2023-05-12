@@ -1,6 +1,6 @@
 #include "Optimizer.h"
 
-optimizerAnalysis::optimizerAnalysis(map<int, string> nt, symbolTable* gt, vector<TASitem> ic)
+optimizerAnalysis::optimizerAnalysis(map<int, string> nt, SymbolTable* gt, vector<Quaternion> ic)
 {
 	name_table = nt;
 	global_table = gt;
@@ -42,7 +42,7 @@ bool optimizerAnalysis::preOptimize()
 	int function_label_count = 0;
 	for (auto i = 0; i < intermediate_code.size(); i++)
 	{
-		TASitem* e = &intermediate_code[i];
+		Quaternion* e = &intermediate_code[i];
 		if (e->op == "jal")
 		{
 			if (label_map.find(stoi(e->result)) == label_map.end())
@@ -57,13 +57,13 @@ bool optimizerAnalysis::preOptimize()
 		}
 	}
 
-	vector<TASitem> newcode;
+	vector<Quaternion> newcode;
 	for (auto i = 0; i < intermediate_code.size(); i++)
 	{
-		TASitem e = intermediate_code[i];
+		Quaternion e = intermediate_code[i];
 		if (label_map.find(i) != label_map.end())
 		{
-			TASitem label = { label_map[i],"","","" };
+			Quaternion label = { label_map[i],"","","" };
 			newcode.push_back(label);
 		}
 		newcode.push_back(e);
@@ -76,7 +76,7 @@ void optimizerAnalysis::partition()
 	blockItem block;
 	for (auto i = 0; i < intermediate_code.size(); i++)
 	{
-		TASitem e = intermediate_code[i];
+		Quaternion e = intermediate_code[i];
 		bool jmp_flag = (i - 1 >= 0 && (intermediate_code[i - 1].op[0] == 'j' || intermediate_code[i - 1].op == "ret"));
 		if (i == 0 || e.op[0] == 'L' || e.op[0] == 'F' || jmp_flag)
 		{
@@ -564,7 +564,7 @@ string optimizerAnalysis::newtemp()
 }
 void optimizerAnalysis::optimize()
 {
-	vector<TASitem> optimized_code;
+	vector<Quaternion> optimized_code;
 	for (int block_no = 0; block_no < block_group.size(); block_no++)
 	{
 		vector<DAGitem> DAG = geneDAG(block_no);
@@ -639,7 +639,7 @@ void optimizerAnalysis::optimize()
 							v = DAG[i].value.substr(1);
 						else
 							v = DAG[i].value;
-						TASitem newTAS = { ":=",v,"",DAG[i].label[j] };
+						Quaternion newTAS = { ":=",v,"",DAG[i].label[j] };
 						optimized_code.push_back(newTAS);
 					}
 				}
@@ -684,16 +684,16 @@ void optimizerAnalysis::optimize()
 						{
 							tri_v = DAG[DAG[i].tri_child].label[0];
 						}
-						TASitem newTAS = { DAG[i].op,lv,rv,tri_v };
+						Quaternion newTAS = { DAG[i].op,lv,rv,tri_v };
 						optimized_code.push_back(newTAS);
 					}
 					else
 					{
-						TASitem newTAS = { DAG[i].op,lv,rv,DAG[i].label[0] };
+						Quaternion newTAS = { DAG[i].op,lv,rv,DAG[i].label[0] };
 						optimized_code.push_back(newTAS);
 						for (auto label_no = 1; label_no < DAG[i].label.size(); label_no++)
 						{
-							TASitem newTAS = { ":=",DAG[i].label[0],"",DAG[i].label[label_no] };
+							Quaternion newTAS = { ":=",DAG[i].label[0],"",DAG[i].label[label_no] };
 							optimized_code.push_back(newTAS);
 						}
 					}
@@ -702,7 +702,7 @@ void optimizerAnalysis::optimize()
 		}
 		for (auto i = newblock.begin; i < optimized_code.size(); i++)
 		{
-			TASitem e = optimized_code[i];
+			Quaternion e = optimized_code[i];
 			if (e.op == "+" && e.arg1 == "$sp" && is_num(e.arg2) && e.result == "$sp")
 			{
 				int sum = atoi(e.arg2.c_str());
@@ -720,7 +720,7 @@ void optimizerAnalysis::optimize()
 	int newtemp_counter = 0;
 	for (auto pos = 0; pos < optimized_code.size(); pos++)
 	{
-		TASitem TAS = optimized_code[pos];
+		Quaternion TAS = optimized_code[pos];
 		if ((TAS.arg1[0] == 'T' || TAS.arg1[0] == 'S') && tmpV_map.find(TAS.arg1) == tmpV_map.end())
 			tmpV_map[TAS.arg1] = "T" + to_string(newtemp_counter++);
 		if ((TAS.arg2[0] == 'T' || TAS.arg2[0] == 'S') && tmpV_map.find(TAS.arg2) == tmpV_map.end())
@@ -730,7 +730,7 @@ void optimizerAnalysis::optimize()
 	}
 	for (auto pos = 0; pos < optimized_code.size(); pos++)
 	{
-		TASitem* pTAS = &optimized_code[pos];
+		Quaternion* pTAS = &optimized_code[pos];
 		if (tmpV_map.find(pTAS->arg1) != tmpV_map.end())
 			pTAS->arg1 = tmpV_map[pTAS->arg1];
 		if (tmpV_map.find(pTAS->arg2) != tmpV_map.end())

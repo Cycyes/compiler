@@ -17,7 +17,7 @@ int main() {
     syntax.getInput(fstring);
     syntax.analysis();
     // 优化代码
-    optimizerAnalysis optimizer(syntax.L.varTable, syntax.S.global_table, syntax.S.intermediate_code);
+    optimizerAnalysis optimizer(syntax.L.varTable, syntax.S.gSymbolTable, syntax.S.intermediateCode);
     //optimizerAnalysis optimizer(syntax.L.nameTable, syntax.S.global_table, syntax.S.intermediate_code);
     double opt_rate = optimizer.analysis();
     // 目标代码

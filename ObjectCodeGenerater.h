@@ -10,13 +10,13 @@ using namespace std;
 struct messageTableItem
 {
 	int no;
-	TASitem TAS;
+	Quaternion TAS;
 	pair<int, bool> arg1_tag;
 	pair<int, bool> arg2_tag;
 	pair<int, bool> result_tag;
 };
 struct analysisHistoryItem {
-	TASitem TAS;
+	Quaternion TAS;
 	vector<string> object_codes;
 	map<string, vector<pair<string, int>>> RVALUE;
 	map<string, vector<string>> AVALUE;
@@ -24,7 +24,7 @@ struct analysisHistoryItem {
 class objectCodeGenerator
 {
 private:
-	vector<TASitem> intermediate_code;
+	vector<Quaternion> intermediate_code;
 	vector<blockItem> block_group;
 	map<string, vector<pair<string, int>>> RVALUE = {
 		{"$t0",vector<pair<string,int>>{}},
@@ -50,7 +50,7 @@ private:
 		return true;
 	}
 	vector<messageTableItem> geneMessageTable(int block_no);
-	void EMIT(string code);
+	void emit(string code);
 	string getREG(string result);
 	void freshRA(pair<int, bool> tag, string R, string V, bool value_changed);
 	void endBlock();
@@ -61,7 +61,7 @@ public:
 	vector<string> object_code;
 	vector<messageTableItem> messageTableHistory;
 	vector<analysisHistoryItem> analysisHistory;
-	objectCodeGenerator(vector<TASitem> ic, vector<blockItem> bg, int stack_size);
+	objectCodeGenerator(vector<Quaternion> ic, vector<blockItem> bg, int stack_size);
 	void geneObjectCode();
 	void showMessageTableHistory();
 	void showAnalysisHistory();

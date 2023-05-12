@@ -1,6 +1,6 @@
 #include "ObjectCodeGenerater.h"
 
-objectCodeGenerator::objectCodeGenerator(vector<TASitem> ic, vector<blockItem> bg, int stack_size)
+objectCodeGenerator::objectCodeGenerator(vector<Quaternion> ic, vector<blockItem> bg, int stack_size)
 {
 	intermediate_code = ic;
 	block_group = bg;
@@ -14,7 +14,7 @@ vector<messageTableItem> objectCodeGenerator::geneMessageTable(int block_no)
 	map<string, pair<int, bool>> message_link;
 	for (auto pos = block_group[block_no].end; pos >= block_group[block_no].begin; pos--)
 	{
-		TASitem TAS = intermediate_code[pos];
+		Quaternion TAS = intermediate_code[pos];
 		messageTableItem new_table_item;
 		new_table_item.no = pos;
 		new_table_item.TAS = TAS;
@@ -72,7 +72,7 @@ vector<messageTableItem> objectCodeGenerator::geneMessageTable(int block_no)
 	reverse(message_table.begin(), message_table.end());
 	return message_table;
 }
-void objectCodeGenerator::EMIT(string code)
+void objectCodeGenerator::emit(string code)
 {
 	object_code.push_back(code);
 	new_code.push_back(code);
@@ -128,11 +128,11 @@ string objectCodeGenerator::getREG(string result)
 		{
 			//save variable V
 			if (V[0] == 'G')
-				EMIT("sw " + R + "," + DATA + "+" + to_string(stoi(V.substr(1))));
+				emit("sw " + R + "," + DATA + "+" + to_string(stoi(V.substr(1))));
 			else if (V[0] == 'V')
-				EMIT("sw " + R + "," + STACK + "+" + to_string(4 + stoi(V.substr(1))) + "($fp)");
+				emit("sw " + R + "," + STACK + "+" + to_string(4 + stoi(V.substr(1))) + "($fp)");
 			else if (V[0] == 'T')
-				EMIT("sw " + R + "," + TEMP + "+" + to_string(4 * stoi(V.substr(1))));
+				emit("sw " + R + "," + TEMP + "+" + to_string(4 * stoi(V.substr(1))));
 			else
 			{
 				//cerr << "ERROR: AVALUE中出现意外的变量名:" << V << endl;
@@ -234,11 +234,11 @@ void objectCodeGenerator::endBlock()
 				}
 			}
 			if (V[0] == 'G')
-				EMIT("sw " + R + "," + DATA + "+" + to_string(stoi(V.substr(1))));
+				emit("sw " + R + "," + DATA + "+" + to_string(stoi(V.substr(1))));
 			else if (V[0] == 'V')
-				EMIT("sw " + R + "," + STACK + "+" + to_string(4 + stoi(V.substr(1))) + "($fp)");
+				emit("sw " + R + "," + STACK + "+" + to_string(4 + stoi(V.substr(1))) + "($fp)");
 			else if (V[0] == 'T')
-				EMIT("sw " + R + "," + TEMP + "+" + to_string(4 * stoi(V.substr(1))));
+				emit("sw " + R + "," + TEMP + "+" + to_string(4 * stoi(V.substr(1))));
 			else
 			{
 				//cerr << "ERROR: AVALUE中出现意外的变量名:" << V << endl;
@@ -256,26 +256,26 @@ void objectCodeGenerator::endBlock()
 }
 void objectCodeGenerator::geneObjectCode()
 {
-	EMIT(".data");
-	EMIT(DATA + ":.space " + to_string(data_buf_size));
-	EMIT(STACK + ":.space " + to_string(stack_buf_size));
-	EMIT(TEMP + ":.space " + to_string(temp_buf_size));
-	EMIT(".text");
-	EMIT("j B0");
-	EMIT("B1:");
-	EMIT("nop");
-	EMIT("j B1");
-	EMIT("nop");
-	EMIT("B2:");
-	EMIT("jal Fmain");
-	EMIT("nop");
-	EMIT("break");
-	EMIT("B0:");
-	EMIT("addi $gp,$zero,0");
-	EMIT("addi $fp,$zero,0");
-	EMIT("addi $sp,$zero,4");
-	EMIT("j B2");
-	EMIT("nop");
+	emit(".data");
+	emit(DATA + ":.space " + to_string(data_buf_size));
+	emit(STACK + ":.space " + to_string(stack_buf_size));
+	emit(TEMP + ":.space " + to_string(temp_buf_size));
+	emit(".text");
+	emit("j B0");
+	emit("B1:");
+	emit("nop");
+	emit("j B1");
+	emit("nop");
+	emit("B2:");
+	emit("jal Fmain");
+	emit("nop");
+	emit("break");
+	emit("B0:");
+	emit("addi $gp,$zero,0");
+	emit("addi $fp,$zero,0");
+	emit("addi $sp,$zero,4");
+	emit("j B2");
+	emit("nop");
 
 	for (auto block_no = 0; block_no < block_group.size(); block_no++)
 	{
@@ -284,7 +284,7 @@ void objectCodeGenerator::geneObjectCode()
 		for (auto i = 0; i < MessageTable.size(); i++)
 		{
 			new_code.clear();
-			TASitem TAS = MessageTable[i].TAS;
+			Quaternion TAS = MessageTable[i].TAS;
 			string Reg_arg1, Reg_arg2;
 			if (TAS.arg1 == "" || TAS.op == "=[]")
 				Reg_arg1 = "";
@@ -298,7 +298,7 @@ void objectCodeGenerator::geneObjectCode()
 					Reg_arg1 = TAS.arg1;
 				else
 				{
-					EMIT("addi $t8,$zero," + TAS.arg1);
+					emit("addi $t8,$zero," + TAS.arg1);
 					Reg_arg1 = "$t8";
 				}
 			}
@@ -317,7 +317,7 @@ void objectCodeGenerator::geneObjectCode()
 
 				if (AVALUE[TAS.arg1].size() == 1 && AVALUE[TAS.arg1][0] == "M")
 				{
-					EMIT("lw $t8," + DATA + "+" + to_string(stoi(TAS.arg1.substr(1))));
+					emit("lw $t8," + DATA + "+" + to_string(stoi(TAS.arg1.substr(1))));
 					Reg_arg1 = "$t8";
 				}
 				else
@@ -344,7 +344,7 @@ void objectCodeGenerator::geneObjectCode()
 
 				if (AVALUE[TAS.arg1].size() == 1 && AVALUE[TAS.arg1][0] == "M")
 				{
-					EMIT("lw $t8," + STACK + "+" + to_string(4 + stoi(TAS.arg1.substr(1))) + "($fp)");
+					emit("lw $t8," + STACK + "+" + to_string(4 + stoi(TAS.arg1.substr(1))) + "($fp)");
 					Reg_arg1 = "$t8";
 				}
 				else
@@ -371,7 +371,7 @@ void objectCodeGenerator::geneObjectCode()
 
 				if (AVALUE[TAS.arg1].size() == 1 && AVALUE[TAS.arg1][0] == "M")
 				{
-					EMIT("lw $t8," + TEMP + "+" + to_string(4 * stoi(TAS.arg1.substr(1))));
+					emit("lw $t8," + TEMP + "+" + to_string(4 * stoi(TAS.arg1.substr(1))));
 					Reg_arg1 = "$t8";
 				}
 				else
@@ -396,7 +396,7 @@ void objectCodeGenerator::geneObjectCode()
 					Reg_arg2 = TAS.arg2;
 				else
 				{
-					EMIT("addi $t9,$zero," + TAS.arg2);
+					emit("addi $t9,$zero," + TAS.arg2);
 					Reg_arg2 = "$t9";
 				}
 			}
@@ -415,7 +415,7 @@ void objectCodeGenerator::geneObjectCode()
 
 				if (AVALUE[TAS.arg2].size() == 1 && AVALUE[TAS.arg2][0] == "M")
 				{
-					EMIT("lw $t9," + DATA + "+" + to_string(stoi(TAS.arg2.substr(1))));
+					emit("lw $t9," + DATA + "+" + to_string(stoi(TAS.arg2.substr(1))));
 					Reg_arg2 = "$t9";
 				}
 				else
@@ -442,7 +442,7 @@ void objectCodeGenerator::geneObjectCode()
 
 				if (AVALUE[TAS.arg2].size() == 1 && AVALUE[TAS.arg2][0] == "M")
 				{
-					EMIT("lw $t9," + STACK + "+" + to_string(4 + stoi(TAS.arg2.substr(1))) + "($fp)");
+					emit("lw $t9," + STACK + "+" + to_string(4 + stoi(TAS.arg2.substr(1))) + "($fp)");
 					Reg_arg2 = "$t9";
 				}
 				else
@@ -469,7 +469,7 @@ void objectCodeGenerator::geneObjectCode()
 
 				if (AVALUE[TAS.arg2].size() == 1 && AVALUE[TAS.arg2][0] == "M")
 				{
-					EMIT("lw $t9," + TEMP + "+" + to_string(4 * stoi(TAS.arg2.substr(1))));
+					emit("lw $t9," + TEMP + "+" + to_string(4 * stoi(TAS.arg2.substr(1))));
 					Reg_arg2 = "$t9";
 				}
 				else
@@ -484,35 +484,35 @@ void objectCodeGenerator::geneObjectCode()
 
 			if (TAS.op[0] == 'F' || TAS.op[0] == 'L')
 			{
-				EMIT(TAS.op + ":");
+				emit(TAS.op + ":");
 			}
 			else if (TAS.op == "nop")
 			{
-				EMIT("nop");
+				emit("nop");
 			}
 			else if (TAS.op == "j")
 			{
 				j_end = true;
 				endBlock();
-				EMIT("j " + TAS.result);
+				emit("j " + TAS.result);
 			}
 			else if (TAS.op == "jal")
 			{
 				j_end = true;
 				//endBlock();
-				EMIT("jal " + TAS.result);
+				emit("jal " + TAS.result);
 			}
 			else if (TAS.op == "break")
 			{
 				j_end = true;
 				endBlock();
-				EMIT("break");
+				emit("break");
 			}
 			else if (TAS.op == "ret")
 			{
 				j_end = true;
 				endBlock();
-				EMIT("jr $ra");
+				emit("jr $ra");
 			}
 			else if (TAS.op == "jnz")
 			{
@@ -520,53 +520,53 @@ void objectCodeGenerator::geneObjectCode()
 				if (RVALUE.find(Reg_arg1) != RVALUE.end())
 					freshRA(MessageTable[i].arg1_tag, Reg_arg1, TAS.arg1, false);
 				endBlock();
-				EMIT("bne " + Reg_arg1 + ",$zero," + TAS.result);
+				emit("bne " + Reg_arg1 + ",$zero," + TAS.result);
 			}
 			else if (TAS.op == "j<")
 			{
 				j_end = true;
-				EMIT("addi $t8," + Reg_arg1 + ",1");
-				EMIT("sub $t9," + Reg_arg2 + ",$t8");
+				emit("addi $t8," + Reg_arg1 + ",1");
+				emit("sub $t9," + Reg_arg2 + ",$t8");
 				if (RVALUE.find(Reg_arg1) != RVALUE.end())
 					freshRA(MessageTable[i].arg1_tag, Reg_arg1, TAS.arg1, false);
 				if (RVALUE.find(Reg_arg2) != RVALUE.end())
 					freshRA(MessageTable[i].arg2_tag, Reg_arg2, TAS.arg2, false);
 				endBlock();
-				EMIT("bgez $t9," + TAS.result);
+				emit("bgez $t9," + TAS.result);
 			}
 			else if (TAS.op == "j<=")
 			{
 				j_end = true;
-				EMIT("sub $t9," + Reg_arg2 + "," + Reg_arg1);
+				emit("sub $t9," + Reg_arg2 + "," + Reg_arg1);
 				if (RVALUE.find(Reg_arg1) != RVALUE.end())
 					freshRA(MessageTable[i].arg1_tag, Reg_arg1, TAS.arg1, false);
 				if (RVALUE.find(Reg_arg2) != RVALUE.end())
 					freshRA(MessageTable[i].arg2_tag, Reg_arg2, TAS.arg2, false);
 				endBlock();
-				EMIT("bgez $t9," + TAS.result);
+				emit("bgez $t9," + TAS.result);
 			}
 			else if (TAS.op == "j>")
 			{
 				j_end = true;
-				EMIT("addi $t9," + Reg_arg2 + ",1");
-				EMIT("sub  $t8," + Reg_arg1 + ",$t9");
+				emit("addi $t9," + Reg_arg2 + ",1");
+				emit("sub  $t8," + Reg_arg1 + ",$t9");
 				if (RVALUE.find(Reg_arg1) != RVALUE.end())
 					freshRA(MessageTable[i].arg1_tag, Reg_arg1, TAS.arg1, false);
 				if (RVALUE.find(Reg_arg2) != RVALUE.end())
 					freshRA(MessageTable[i].arg2_tag, Reg_arg2, TAS.arg2, false);
 				endBlock();
-				EMIT("bgez $t8," + TAS.result);
+				emit("bgez $t8," + TAS.result);
 			}
 			else if (TAS.op == "j>=")
 			{
 				j_end = true;
-				EMIT("sub $t8," + Reg_arg1 + "," + Reg_arg2);
+				emit("sub $t8," + Reg_arg1 + "," + Reg_arg2);
 				if (RVALUE.find(Reg_arg1) != RVALUE.end())
 					freshRA(MessageTable[i].arg1_tag, Reg_arg1, TAS.arg1, false);
 				if (RVALUE.find(Reg_arg2) != RVALUE.end())
 					freshRA(MessageTable[i].arg2_tag, Reg_arg2, TAS.arg2, false);
 				endBlock();
-				EMIT("bgez $t8," + TAS.result);
+				emit("bgez $t8," + TAS.result);
 			}
 			else if (TAS.op == "j==")
 			{
@@ -576,7 +576,7 @@ void objectCodeGenerator::geneObjectCode()
 				if (RVALUE.find(Reg_arg2) != RVALUE.end())
 					freshRA(MessageTable[i].arg2_tag, Reg_arg2, TAS.arg2, false);
 				endBlock();
-				EMIT("beq " + Reg_arg1 + "," + Reg_arg2 + "," + TAS.result);
+				emit("beq " + Reg_arg1 + "," + Reg_arg2 + "," + TAS.result);
 			}
 			else if (TAS.op == "j!=")
 			{
@@ -586,7 +586,7 @@ void objectCodeGenerator::geneObjectCode()
 				if (RVALUE.find(Reg_arg2) != RVALUE.end())
 					freshRA(MessageTable[i].arg2_tag, Reg_arg2, TAS.arg2, false);
 				endBlock();
-				EMIT("bne " + Reg_arg1 + "," + Reg_arg2 + "," + TAS.result);
+				emit("bne " + Reg_arg1 + "," + Reg_arg2 + "," + TAS.result);
 			}
 			else if (TAS.op == ":=")
 			{
@@ -596,11 +596,11 @@ void objectCodeGenerator::geneObjectCode()
 					R = TAS.result;
 					if (TAS.arg1 == "[$sp]")
 					{
-						EMIT("lw " + R + "," + Reg_arg1);
+						emit("lw " + R + "," + Reg_arg1);
 					}
 					else
 					{
-						EMIT("add " + R + ",$zero," + Reg_arg1);
+						emit("add " + R + ",$zero," + Reg_arg1);
 					}
 				}
 				else if (TAS.result == "[$sp]")
@@ -614,7 +614,7 @@ void objectCodeGenerator::geneObjectCode()
 					}
 					else
 					{
-						EMIT("sw " + Reg_arg1 + "," + R);
+						emit("sw " + Reg_arg1 + "," + R);
 					}
 				}
 				else
@@ -622,11 +622,11 @@ void objectCodeGenerator::geneObjectCode()
 					R = getREG(TAS.result);
 					if (TAS.arg1 == "[$sp]")
 					{
-						EMIT("lw " + R + "," + Reg_arg1);
+						emit("lw " + R + "," + Reg_arg1);
 					}
 					else
 					{
-						EMIT("add " + R + ",$zero," + Reg_arg1);
+						emit("add " + R + ",$zero," + Reg_arg1);
 					}
 				}
 				if (RVALUE.find(R) != RVALUE.end())
@@ -639,23 +639,23 @@ void objectCodeGenerator::geneObjectCode()
 				string base = TAS.result;
 				if (TAS.result[0] == 'G')
 				{
-					EMIT("sll $t9," + Reg_arg2 + ",2");
-					EMIT("addi $t9,$t9," + base.substr(1));
-					EMIT("sw " + Reg_arg1 + "," + DATA + "($t9)");
+					emit("sll $t9," + Reg_arg2 + ",2");
+					emit("addi $t9,$t9," + base.substr(1));
+					emit("sw " + Reg_arg1 + "," + DATA + "($t9)");
 				}
 				else if (TAS.result[0] == 'V')
 				{
-					EMIT("sll $t9," + Reg_arg2 + ",2");
-					EMIT("addi $t9,$t9," + base.substr(1));
-					EMIT("addi $t9,$t9,4");
-					EMIT("add $t9,$t9,$fp");
-					EMIT("sw " + Reg_arg1 + "," + STACK + "($t9)");
+					emit("sll $t9," + Reg_arg2 + ",2");
+					emit("addi $t9,$t9," + base.substr(1));
+					emit("addi $t9,$t9,4");
+					emit("add $t9,$t9,$fp");
+					emit("sw " + Reg_arg1 + "," + STACK + "($t9)");
 				}
 				else if (TAS.result[0] == 'T')
 				{
-					EMIT("addi $t9," + Reg_arg2 + "," + base.substr(1));
-					EMIT("sll $t9,$t9,2");
-					EMIT("sw " + Reg_arg1 + "," + TEMP + "($t9)");
+					emit("addi $t9," + Reg_arg2 + "," + base.substr(1));
+					emit("sll $t9,$t9,2");
+					emit("sw " + Reg_arg1 + "," + TEMP + "($t9)");
 				}
 				else
 				{
@@ -679,23 +679,23 @@ void objectCodeGenerator::geneObjectCode()
 					R = getREG(TAS.result);
 				if (TAS.arg1[0] == 'G')
 				{
-					EMIT("sll $t9," + Reg_arg2 + ",2");
-					EMIT("addi $t9,$t9," + TAS.arg1.substr(1));
-					EMIT("lw " + R + "," + DATA + "($t9)");
+					emit("sll $t9," + Reg_arg2 + ",2");
+					emit("addi $t9,$t9," + TAS.arg1.substr(1));
+					emit("lw " + R + "," + DATA + "($t9)");
 				}
 				else if (TAS.arg1[0] == 'V')
 				{
-					EMIT("sll $t9," + Reg_arg2 + ",2");
-					EMIT("addi $t9,$t9," + TAS.arg1.substr(1));
-					EMIT("addi $t9,$t9,4");
-					EMIT("add $t9,$t9,$fp");
-					EMIT("lw " + R + "," + STACK + "($t9)");
+					emit("sll $t9," + Reg_arg2 + ",2");
+					emit("addi $t9,$t9," + TAS.arg1.substr(1));
+					emit("addi $t9,$t9,4");
+					emit("add $t9,$t9,$fp");
+					emit("lw " + R + "," + STACK + "($t9)");
 				}
 				else if (TAS.arg1[0] == 'T')
 				{
-					EMIT("addi $t9," + Reg_arg2 + "," + TAS.arg1.substr(1));
-					EMIT("sll $t9,$t9,2");
-					EMIT("lw " + R + "," + TEMP + "($t9)");
+					emit("addi $t9," + Reg_arg2 + "," + TAS.arg1.substr(1));
+					emit("sll $t9,$t9,2");
+					emit("lw " + R + "," + TEMP + "($t9)");
 				}
 				else
 				{
@@ -719,11 +719,11 @@ void objectCodeGenerator::geneObjectCode()
 					R = getREG(TAS.result);
 
 				if (is_num(Reg_arg1))
-					EMIT("addi " + R + "," + Reg_arg2 + "," + Reg_arg1);
+					emit("addi " + R + "," + Reg_arg2 + "," + Reg_arg1);
 				else if (is_num(Reg_arg2))
-					EMIT("addi " + R + "," + Reg_arg1 + "," + Reg_arg2);
+					emit("addi " + R + "," + Reg_arg1 + "," + Reg_arg2);
 				else
-					EMIT("add " + R + "," + Reg_arg1 + "," + Reg_arg2);
+					emit("add " + R + "," + Reg_arg1 + "," + Reg_arg2);
 				if (RVALUE.find(R) != RVALUE.end())
 					freshRA(MessageTable[i].result_tag, R, TAS.result, true);
 				if (RVALUE.find(Reg_arg1) != RVALUE.end())
@@ -740,7 +740,7 @@ void objectCodeGenerator::geneObjectCode()
 					R = STACK + "($sp)";
 				else
 					R = getREG(TAS.result);
-				EMIT("sub " + R + "," + Reg_arg1 + "," + Reg_arg2);
+				emit("sub " + R + "," + Reg_arg1 + "," + Reg_arg2);
 				if (RVALUE.find(R) != RVALUE.end())
 					freshRA(MessageTable[i].result_tag, R, TAS.result, true);
 				if (RVALUE.find(Reg_arg1) != RVALUE.end())
@@ -757,7 +757,7 @@ void objectCodeGenerator::geneObjectCode()
 					R = STACK + "($sp)";
 				else
 					R = getREG(TAS.result);
-				EMIT("and " + R + "," + Reg_arg1 + "," + Reg_arg2);
+				emit("and " + R + "," + Reg_arg1 + "," + Reg_arg2);
 				if (RVALUE.find(R) != RVALUE.end())
 					freshRA(MessageTable[i].result_tag, R, TAS.result, true);
 				if (RVALUE.find(Reg_arg1) != RVALUE.end())
@@ -774,7 +774,7 @@ void objectCodeGenerator::geneObjectCode()
 					R = STACK + "($sp)";
 				else
 					R = getREG(TAS.result);
-				EMIT("or " + R + "," + Reg_arg1 + "," + Reg_arg2);
+				emit("or " + R + "," + Reg_arg1 + "," + Reg_arg2);
 				if (RVALUE.find(R) != RVALUE.end())
 					freshRA(MessageTable[i].result_tag, R, TAS.result, true);
 				if (RVALUE.find(Reg_arg1) != RVALUE.end())
@@ -791,7 +791,7 @@ void objectCodeGenerator::geneObjectCode()
 					R = STACK + "($sp)";
 				else
 					R = getREG(TAS.result);
-				EMIT("xor " + R + "," + Reg_arg1 + "," + Reg_arg2);
+				emit("xor " + R + "," + Reg_arg1 + "," + Reg_arg2);
 				if (RVALUE.find(R) != RVALUE.end())
 					freshRA(MessageTable[i].result_tag, R, TAS.result, true);
 				if (RVALUE.find(Reg_arg1) != RVALUE.end())
@@ -808,7 +808,7 @@ void objectCodeGenerator::geneObjectCode()
 					R = STACK + "($sp)";
 				else
 					R = getREG(TAS.result);
-				EMIT("mul " + R + "," + Reg_arg1 + "," + Reg_arg2);
+				emit("mul " + R + "," + Reg_arg1 + "," + Reg_arg2);
 				if (RVALUE.find(R) != RVALUE.end())
 					freshRA(MessageTable[i].result_tag, R, TAS.result, true);
 				if (RVALUE.find(Reg_arg1) != RVALUE.end())
@@ -825,8 +825,8 @@ void objectCodeGenerator::geneObjectCode()
 					R = STACK + "($sp)";
 				else
 					R = getREG(TAS.result);
-				EMIT("div " + Reg_arg1 + "," + Reg_arg2);
-				EMIT("mflo " + R);//Quotient in $lo
+				emit("div " + Reg_arg1 + "," + Reg_arg2);
+				emit("mflo " + R);//Quotient in $lo
 				if (RVALUE.find(R) != RVALUE.end())
 					freshRA(MessageTable[i].result_tag, R, TAS.result, true);
 				if (RVALUE.find(Reg_arg1) != RVALUE.end())
