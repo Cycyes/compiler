@@ -390,15 +390,6 @@ void SyntaxAnalyser::generateDFA() {
 	stack<int> stk;
 
 	int cnt = 0;
-	/*
-	LR1ItemSet I = {
-		{
-			{pair<string, vector<string>>(string("S'"),{S}),0,{string("#")}}
-		},
-		{
-		}
-	};
-	*/
 	LR1ItemSet I;
 	I.ItemSet.insert(LR1Item(pair<vn, ProductionRight>("S'", { S }), 0, { "#" }));
 	CLOSURE(I);
@@ -496,3 +487,37 @@ void SyntaxAnalyser::analyse() {
 	this->generateDFA();
 	this->generateLR1Table();
 }
+
+int SyntaxAnalyser::getVTPos(const string& s) {
+
+	
+	// 判断s是否在VT集合中
+	if (find(VT.begin(), VT.end(), s) == VT.end()) {
+		return NOT_FOUND;
+	}
+	
+
+	// 遍历VT集合，因为定义过比较函数，所以VT是有序的set
+	int ret = 0;
+	for (auto i = VT.begin(); i != VT.end(); i++, ret++) {
+		if ((*i) == s) {
+			return ret;
+		}
+	}
+
+	return NOT_FOUND;
+}
+
+int SyntaxAnalyser::getVNPos(const string& s) {
+	// 遍历VN集合，因为定义过比较函数，所以VT是有序的set
+	int ret = 0;
+	for (auto i = VN.begin(); i != VN.end(); i++, ret++) {
+		if ((*i) == s) {
+			return ret;
+		}
+	}
+
+	return NOT_FOUND;
+}
+
+/*============================== SyntaxAnalyser ==============================*/

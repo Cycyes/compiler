@@ -11,8 +11,11 @@ public:
 
 	/*=== Functions ===*/
 public:
-	Token(const string s, const int c);
+	Token(const string s = "", const int c = -1);
 	~Token();
+
+	bool operator == (const Token& t);
+	bool operator != (const Token& t);
 };
 
 class LexcalAnalyser {

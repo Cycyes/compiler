@@ -130,7 +130,7 @@ void SyntaxTreeNode::clear() {
 	level = -1;
 	parent = NULL;
 	children.clear();
-	content = pair<string, int>("", -1);
+	token = Token("", -1);
 }
 
 /*============================== 语义树节点 ==============================*/
@@ -264,11 +264,11 @@ void SemanticAnalyser::ASSERTION0(SyntaxTreeNode* root) {
 	root->width = 4 * root->n;
 
 	// 在当前符号表中插入
-	symbolTableStack.back()->enter(root->children[1]->content.second, offsetStack.back(), root->dataType, root->symbolType);
+	symbolTableStack.back()->enter(root->children[1]->token.code, offsetStack.back(), root->dataType, root->symbolType);
 	
 	if (root->symbolType == SymbolTableItem::S_ARRAY) {
 		root->arrayShpae = root->children[2]->arrayShpae;
-		symbolTableStack.back()->setIdArrayShape(root->children[1]->content.second, root->arrayShpae);
+		symbolTableStack.back()->setIdArrayShape(root->children[1]->token.code, root->arrayShpae);
 	}
 
 	// 跟新offsetStack
@@ -316,10 +316,10 @@ void SemanticAnalyser::FUNCASSERTION0(SyntaxTreeNode* root) {
 	int offset = offsetStack.back();
 	offsetStack.pop_back();
 
-	symbolTableStack.back()->enter(root->children[1]->content.second, root->children[2]->quad, root->dataType, root->symbolType);
+	symbolTableStack.back()->enter(root->children[1]->token.code, root->children[2]->quad, root->dataType, root->symbolType);
 	offsetStack.back() += 0;
-	symbolTableStack.back()->setIdFuncTablePointer(root->children[1]->content.second, stp);
-	symbolTableStack.back()->setIdArrayShape(root->children[1]->content.second, root->children[4]->arrayShpae);
+	symbolTableStack.back()->setIdFuncTablePointer(root->children[1]->token.code, stp);
+	symbolTableStack.back()->setIdArrayShape(root->children[1]->token.code, root->children[4]->arrayShpae);
 
 	symbolTableStack.push_back(stp);
 	offsetStack.push_back(offset);
@@ -336,10 +336,10 @@ void SemanticAnalyser::FUNCASSERTION1(SyntaxTreeNode* root) {
 	int offset = offsetStack.back();
 	offsetStack.pop_back();
 
-	symbolTableStack.back()->enter(root->children[1]->content.second, root->children[2]->quad, root->dataType, root->symbolType);
+	symbolTableStack.back()->enter(root->children[1]->token.code, root->children[2]->quad, root->dataType, root->symbolType);
 	offsetStack.back() += 0;
-	symbolTableStack.back()->setIdFuncTablePointer(root->children[1]->content.second, stp);
-	symbolTableStack.back()->setIdArrayShape(root->children[1]->content.second, root->children[4]->arrayShpae);
+	symbolTableStack.back()->setIdFuncTablePointer(root->children[1]->token.code, stp);
+	symbolTableStack.back()->setIdArrayShape(root->children[1]->token.code, root->children[4]->arrayShpae);
 
 	symbolTableStack.push_back(stp);
 	offsetStack.push_back(offset);
@@ -347,15 +347,15 @@ void SemanticAnalyser::FUNCASSERTION1(SyntaxTreeNode* root) {
 
 void SemanticAnalyser::ARRAYASSERTION0(SyntaxTreeNode* root) {
 	root->symbolType = SymbolTableItem::S_ARRAY;
-	root->n = root->children[1]->content.second;
-	root->arrayShpae.push_back(root->children[1]->content.second);
+	root->n = root->children[1]->token.code;
+	root->arrayShpae.push_back(root->children[1]->token.code);
 }
 
 void SemanticAnalyser::ARRAYASSERTION1(SyntaxTreeNode* root) {
 	root->symbolType = SymbolTableItem::S_ARRAY;
-	root->n = root->children[1]->content.second * root->children[3]->n;
+	root->n = root->children[1]->token.code * root->children[3]->n;
 	root->arrayShpae = root->children[3]->arrayShpae;
-	root->arrayShpae.push_back(root->children[1]->content.second);
+	root->arrayShpae.push_back(root->children[1]->token.code);
 }
 
 void SemanticAnalyser::FORMALPARAM0(SyntaxTreeNode* root) {
@@ -376,7 +376,7 @@ void SemanticAnalyser::FORMALPARAMLIST0(SyntaxTreeNode* root) {
 	root->n = 1;
 	root->width = 4 * root->n;
 	root->arrayShpae.push_back(1);
-	symbolTableStack.back()->enter(root->children[1]->content.second, offsetStack.back(), root->dataType, root->symbolType);
+	symbolTableStack.back()->enter(root->children[1]->token.code, offsetStack.back(), root->dataType, root->symbolType);
 	offsetStack.back() += root->width;
 }
 
@@ -387,7 +387,7 @@ void SemanticAnalyser::FORMALPARAMLIST1(SyntaxTreeNode* root) {
 	root->width = 4 * root->n;
 	root->arrayShpae = root->children[3]->arrayShpae;
 	root->arrayShpae[0] += 1;
-	symbolTableStack.back()->enter(root->children[1]->content.second, offsetStack.back(), root->dataType, root->symbolType);
+	symbolTableStack.back()->enter(root->children[1]->token.code, offsetStack.back(), root->dataType, root->symbolType);
 	offsetStack.back() += root->width;
 }
 
@@ -408,7 +408,7 @@ void SemanticAnalyser::INNERVARIDEF0(SyntaxTreeNode* root) {
 	root->symbolType = SymbolTableItem::S_VAR;
 	root->n = 1;
 	root->width = 4 * root->n;
-	symbolTableStack.back()->enter(root->children[1]->content.second, offsetStack.back(), root->dataType, root->symbolType);
+	symbolTableStack.back()->enter(root->children[1]->token.code, offsetStack.back(), root->dataType, root->symbolType);
 	offsetStack.back() += root->width;
 
 	emit("+", "$sp", to_string(root->width), "$sp");
@@ -421,9 +421,9 @@ void SemanticAnalyser::INNERVARIDEF1(SyntaxTreeNode* root) {
 	root->width = 4 * root->n;
 	root->arrayShpae = root->children[2]->arrayShpae;
 	reverse(root->arrayShpae.begin(), root->arrayShpae.end());
-	symbolTableStack.back()->enter(root->children[1]->content.second, offsetStack.back(), root->dataType, root->symbolType);
-	symbolTableStack.back()->setIdArrayShape(root->children[1]->content.second, root->arrayShpae);
-	// symbolTableStack.back()->enterarrayShpae(root->children[1]->content.second, root->arrayShpae);
+	symbolTableStack.back()->enter(root->children[1]->token.code, offsetStack.back(), root->dataType, root->symbolType);
+	symbolTableStack.back()->setIdArrayShape(root->children[1]->token.code, root->arrayShpae);
+	// symbolTableStack.back()->enterarrayShpae(root->children[1]->token.code, root->arrayShpae);
 	offsetStack.back() += root->width;
 	emit("+", "$sp", to_string(root->width), "$sp");
 }
@@ -453,12 +453,12 @@ void SemanticAnalyser::SENTENCE3() {
 }
 
 void SemanticAnalyser::ASSIGNMENT0(SyntaxTreeNode* root, map<int, string>& nameTable) {
-	string p = lookup(root->children[0]->content.second);
+	string p = lookup(root->children[0]->token.code);
 	if (p == "")
 	{
-		//cerr << "ERROR: " << root->children[0]->content.second << "is undefineded\n";
+		//cerr << "ERROR: " << root->children[0]->token.code << "is undefineded\n";
 		//exit(-1);
-		throw string("ERROR: 语义分析器错误:") + nameTable[root->children[0]->content.second] + string("未定义\n");
+		throw string("ERROR: 语义分析器错误:") + nameTable[root->children[0]->token.code] + string("未定义\n");
 	}
 	else
 	{
@@ -475,12 +475,12 @@ void SemanticAnalyser::ASSIGNMENT1(SyntaxTreeNode* root, map<int, string>& nameT
 		//exit(-1);
 		throw string("ERROR: 语义分析器错误:遇到不完整的数组索引\n");
 	}
-	string p = lookup(root->children[0]->content.second);
+	string p = lookup(root->children[0]->token.code);
 	if (p == "")
 	{
-		//cerr << "ERROR: " << root->children[0]->content.second << "is undefineded\n";
+		//cerr << "ERROR: " << root->children[0]->token.code << "is undefineded\n";
 		//exit(-1);
-		throw string("ERROR: 语义分析器错误:") + nameTable[root->children[0]->content.second] + string("未定义\n");
+		throw string("ERROR: 语义分析器错误:") + nameTable[root->children[0]->token.code] + string("未定义\n");
 	}
 	else
 	{
@@ -656,7 +656,7 @@ void SemanticAnalyser::COMP0(SyntaxTreeNode* root) {
 
 void SemanticAnalyser::COMP1(SyntaxTreeNode* root) {
 	root->place = newtemp();
-	switch (root->children[1]->content.second)
+	switch (root->children[1]->token.code)
 	{
 		case 0:
 			emit("j<", root->children[0]->place, root->children[2]->place, to_string(nextstat() + 3)); break;
@@ -682,7 +682,7 @@ void SemanticAnalyser::PLUSEX0(SyntaxTreeNode* root) {
 
 void SemanticAnalyser::PLUSEX1(SyntaxTreeNode* root) {
 	root->place = newtemp();
-	switch (root->children[1]->content.second)
+	switch (root->children[1]->token.code)
 	{
 		case 0:
 			emit("+", root->children[0]->place, root->children[2]->place, root->place); break;
@@ -703,7 +703,7 @@ void SemanticAnalyser::TERM0(SyntaxTreeNode* root) {
 
 void SemanticAnalyser::TERM1(SyntaxTreeNode* root) {
 	root->place = newtemp();
-	switch (root->children[1]->content.second)
+	switch (root->children[1]->token.code)
 	{
 		case 0:
 			emit("*", root->children[0]->place, root->children[2]->place, root->place); break;
@@ -714,7 +714,7 @@ void SemanticAnalyser::TERM1(SyntaxTreeNode* root) {
 
 void SemanticAnalyser::FACTOR0(SyntaxTreeNode* root) {
 	root->place = newtemp();
-	emit(":=", to_string(root->children[0]->content.second), "", root->place);
+	emit(":=", to_string(root->children[0]->token.code), "", root->place);
 }
 
 void SemanticAnalyser::FACTOR1(SyntaxTreeNode* root) {
@@ -722,12 +722,12 @@ void SemanticAnalyser::FACTOR1(SyntaxTreeNode* root) {
 }
 
 void SemanticAnalyser::FACTOR2(SyntaxTreeNode* root, map<int, string>& nameTable) {
-	string p = lookup(root->children[0]->content.second);
+	string p = lookup(root->children[0]->token.code);
 	if (p == "")
 	{
-		//cerr << "ERROR: " << root->children[0]->content.second << " is undefineded\n";
+		//cerr << "ERROR: " << root->children[0]->token.code << " is undefineded\n";
 		//exit(-1);
-		throw string("ERROR: 语义分析器错误:") + nameTable[root->children[0]->content.second] + string("未定义\n");
+		throw string("ERROR: 语义分析器错误:") + nameTable[root->children[0]->token.code] + string("未定义\n");
 	}
 	else
 	{
@@ -742,12 +742,12 @@ void SemanticAnalyser::FACTOR3(SyntaxTreeNode* root, map<int, string>& nameTable
 		exit(-1);*/
 		throw string("ERROR: 语义分析器错误:遇到不完整的数组索引\n");
 	}
-	string p = lookup(root->children[0]->content.second);
+	string p = lookup(root->children[0]->token.code);
 	if (p == "")
 	{
-		//cerr << "ERROR: " << root->children[0]->content.second << "is undefineded\n";
+		//cerr << "ERROR: " << root->children[0]->token.code << "is undefineded\n";
 		//exit(-1);
-		throw string("ERROR: 语义分析器错误:") + nameTable[root->children[0]->content.second] + string("未定义\n");
+		throw string("ERROR: 语义分析器错误:") + nameTable[root->children[0]->token.code] + string("未定义\n");
 	}
 	else
 	{
@@ -757,10 +757,10 @@ void SemanticAnalyser::FACTOR3(SyntaxTreeNode* root, map<int, string>& nameTable
 }
 
 void SemanticAnalyser::FACTOR4(SyntaxTreeNode* root, map<int, string>& nameTable) {
-	SymbolTableItem* f = find(root->children[0]->content.second);
+	SymbolTableItem* f = find(root->children[0]->token.code);
 	if (f == NULL)
 	{
-		throw string("ERROR: 语义分析器错误:") + nameTable[root->children[0]->content.second] + string("未定义\n");
+		throw string("ERROR: 语义分析器错误:") + nameTable[root->children[0]->token.code] + string("未定义\n");
 	}
 	if (f->arrayShape[0] != root->children[1]->params.size())
 	{
@@ -834,14 +834,14 @@ void SemanticAnalyser::CALL(SyntaxTreeNode* root) {
 }
 
 void SemanticAnalyser::ARRAY0(SyntaxTreeNode* root, map<int, string>& nameTable) {
-	SymbolTableItem* e = find(root->children[0]->content.second);
+	SymbolTableItem* e = find(root->children[0]->token.code);
 	if (e == NULL)
 	{
-		//cerr << "ERROR: " << root->children[0]->content.second << " is undefineded\n";
+		//cerr << "ERROR: " << root->children[0]->token.code << " is undefineded\n";
 		//exit(-1);
-		throw string("ERROR: 语义分析器错误:") + nameTable[root->children[0]->content.second] + string(" 未定义\n");
+		throw string("ERROR: 语义分析器错误:") + nameTable[root->children[0]->token.code] + string(" 未定义\n");
 	}
-	root->content = root->children[0]->content;
+	root->token = root->children[0]->token;
 	root->symbolType = SymbolTableItem::S_ARRAY;
 	root->arrayShpae = e->arrayShape;
 
@@ -870,7 +870,7 @@ void SemanticAnalyser::ARRAY0(SyntaxTreeNode* root, map<int, string>& nameTable)
 }
 
 void SemanticAnalyser::ARRAY1(SyntaxTreeNode* root) {
-	root->content = root->children[0]->content;
+	root->token = root->children[0]->token;
 	root->symbolType = SymbolTableItem::S_ARRAY;
 	root->arrayShpae = root->children[0]->arrayShpae;
 	root->arrayShpae.erase(root->arrayShpae.begin());

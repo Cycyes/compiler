@@ -132,6 +132,9 @@ public:
 	SyntaxAnalyser();
 	~SyntaxAnalyser();
 
+	int getVTPos(const string& s);
+	int getVNPos(const string& s);
+
 	void analyse();
 	void show();
 };

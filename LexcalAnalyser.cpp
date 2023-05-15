@@ -11,6 +11,14 @@ Token::~Token() {
 
 }
 
+bool Token::operator == (const Token& t) {
+	return str == t.str && code == t.code;
+}
+
+bool Token::operator != (const Token& t) {
+	return (str != t.str) || (code != t.code);
+}
+
 /*============================== Token ==============================*/
 
 

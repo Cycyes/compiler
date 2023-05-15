@@ -13,12 +13,15 @@
 #include <map>
 #include <stack>
 
+#define NOT_FOUND -1
+
 #define ERROR_OPEN_FILE -1
 #define ERROR_NEW       -2
 
 #define ERROR_LEXCAL_ANALYSE -1
 #define ERROR_SYNTAX_ANALYSE -2
 #define ERROR_SEMANTIC_ANALYSE_SYMBOLTABLE -3
+#define ERROR_INTERMEDIATE_CODE_GENERATER  -4
 
 
 using namespace std;

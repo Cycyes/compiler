@@ -3,10 +3,20 @@
 
 #include "Optimizer.h"
 
+class ObjectCodeGenerater {
+	/*=== Functions ===*/
+
+	/*=== Members ===*/
+private:
+	vector<Quaternion> intermediateCode;
+
+
+
+};
+
 #define STACK string("stack")
 #define DATA string("data")
 #define TEMP string("temp")
-using namespace std;
 struct messageTableItem
 {
 	int no;

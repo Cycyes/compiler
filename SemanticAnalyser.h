@@ -107,8 +107,6 @@ public:
 
 /*========= Óï·¨Ê÷½Úµã =========*/
 
-typedef pair<string, int> Content;
-
 class SyntaxTreeNode {
 	/*=== Functions ===*/
 public:
@@ -125,7 +123,7 @@ public:
 
 public:
 	int level;
-	Content content;
+	Token token;
 	SymbolTableItem::DataType dataType;
 	SymbolTableItem::SymbolType symbolType;
 
