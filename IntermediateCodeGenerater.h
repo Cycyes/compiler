@@ -30,7 +30,9 @@ public:
 	IntermediateCodeGenerater(const string& s = "");
 	~IntermediateCodeGenerater();
 
-	void analyse();
+	void analyse(const string& filename = "SyntaxTree.dot");
+	void drawSyntaxTree(const string& s = "SyntaxTree.dot", const string& d = "SyntaxTree.png");
+	void showIntermediateCode(const string& filename = "IntermediateCode.txt");
 
 	/*=== Members ===*/
 private:

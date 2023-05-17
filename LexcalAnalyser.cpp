@@ -175,8 +175,6 @@ Token LexcalAnalyser::getNextToken() {
 			case LA_ERROR:
 				cerr << "ERROR: 词法分析器第" << lineCnt << "行的字符: " << ch << "出错!" << endl;
 				exit(ERROR_LEXCAL_ANALYSE);
-				return Token("ERROR", ERROR_LEXCAL_ANALYSE);
-				break;
 		}
 	}
 	return Token("#", -1);

@@ -13,6 +13,11 @@ Quaternion::~Quaternion() {
 
 }
 
+ostream& operator<< (ostream& output, const Quaternion& q) {
+	output << q.op << " " << q.arg1 << " " << q.arg2 << " " << q.result;
+	return output;
+}
+
 /*============================== 符号表项SymbolTableItem ==============================*/
 
 
@@ -90,9 +95,11 @@ void SymbolTable::setIdArrayShape(const int& id, const vector<int>& aS) {
 }
 
 void SymbolTable::setIdFuncTablePointer(const int& id, SymbolTable* p) {
+	// 遍历当前的符号表SymbolTable
 	for (int i = 0; i < table.size(); i++) {
+		// 搜索id
 		if (table[i].id == id && table[i].symbolType == SymbolTableItem::S_FUNC) {
-			table[i].FuncTablePointer = p;
+			table[i].FuncTablePointer = p; // 赋值函数表指针
 			break;
 		}
 	}
@@ -148,11 +155,14 @@ SemanticAnalyser::~SemanticAnalyser() {
 
 }
 
-//
+/*
+* Function Name:        newtemp
+* Function Description: 返回一个新的变量名
+*/
 string SemanticAnalyser::newtemp() {
-	string tmp = "V" + to_string(offsetStack.back());
-	symbolTableStack.back()->enter(tmpCnt--, offsetStack.back(), SymbolTableItem::S_INT, SymbolTableItem::S_VAR);
-	offsetStack.back() += 4;
+	string tmp = "V" + to_string(offsetStack.top());
+	symbolTableStack.top()->enter(tmpCnt--, offsetStack.top(), SymbolTableItem::S_INT, SymbolTableItem::S_VAR);
+	offsetStack.top() += 4;
 	emit("+", "$sp", to_string(4), "$sp");
 	return tmp;
 }
@@ -162,14 +172,16 @@ string SemanticAnalyser::newtemp() {
 * Function Description: 检查是否存在id对应的表项
 */
 string SemanticAnalyser::lookup(int id) {
-	SymbolTable* tp = symbolTableStack.back();
-	int offset;
-	while (tp) {
-		for (int i = 0; i < tp->table.size(); i++) {
-			if (tp->table[i].id == id) {
-				offset = tp->table[i].offset;
-				if (tp->table[i].symbolType == SymbolTableItem::S_VAR || tp->table[i].symbolType == SymbolTableItem::S_ARRAY) {
-					if (tp->parent) {
+	SymbolTable* stsp = symbolTableStack.top(); // 取当前符号表栈顶
+	while (stsp) {
+		// 遍历当前符号表
+		for (int i = 0; i < stsp->table.size(); i++) {
+			if (stsp->table[i].id == id) {
+				int offset = stsp->table[i].offset; // 取偏移量
+				// 判断类型为VAR或者ARRAY
+				if (stsp->table[i].symbolType == SymbolTableItem::S_VAR || stsp->table[i].symbolType == SymbolTableItem::S_ARRAY) {
+					// 判断是否是全局变量
+					if (stsp->parent) {
 						return "V" + to_string(offset);
 					}
 					else {
@@ -178,8 +190,10 @@ string SemanticAnalyser::lookup(int id) {
 				}
 			}
 		}
-		tp = tp->parent;
+		// 更新符号表
+		stsp = stsp->parent;
 	}
+	// 未找到
 	return "";
 }
 
@@ -188,7 +202,7 @@ string SemanticAnalyser::lookup(int id) {
 * Function Description: 返回id对应的TableItem
 */
 SymbolTableItem* SemanticAnalyser::find(int id) {
-	SymbolTable* tp = symbolTableStack.back();
+	SymbolTable* tp = symbolTableStack.top();
 	int offset = -1;
 	while (tp) {
 		for (int i = 0; i < tp->table.size(); i++) {
@@ -211,12 +225,16 @@ void SemanticAnalyser::emit(string op, string arg1, string arg2, string result) 
 }
 
 void SemanticAnalyser::Program() {
-	gSymbolTable = symbolTableStack.back();
-	symbolTableStack.pop_back();
-	gSymbolTable->width = offsetStack.back();
-	offsetStack.pop_back();
+	gSymbolTable = symbolTableStack.top();
+	symbolTableStack.pop();
+	gSymbolTable->width = offsetStack.top();
+	offsetStack.pop();
 }
 
+/*
+* Function Name: M
+* Function Description: 翻译 <PROGRAM>::=<M><ASSERTIONS> <M>::='epsilon' 中的  <M>::='epsilon'
+*/
 void SemanticAnalyser::M(SyntaxTreeNode* root) {
 	root->quad = nextstat(); // 计算quad赋值给根节点
 	
@@ -235,13 +253,13 @@ void SemanticAnalyser::M(SyntaxTreeNode* root) {
 
 	// 维护parent
 	if (!symbolTableStack.empty()) {
-		stp->parent = symbolTableStack.back();
+		stp->parent = symbolTableStack.top();
 	}
 
 	// 更新lastTable, SymbolTableStack, offsetStack
 	lastSymbolTable = stp;
-	symbolTableStack.push_back(stp);
-	offsetStack.push_back(0);
+	symbolTableStack.push(stp);
+	offsetStack.push(0);
 }
 
 void SemanticAnalyser::ASSERTIONS0() {
@@ -264,15 +282,15 @@ void SemanticAnalyser::ASSERTION0(SyntaxTreeNode* root) {
 	root->width = 4 * root->n;
 
 	// 在当前符号表中插入
-	symbolTableStack.back()->enter(root->children[1]->token.code, offsetStack.back(), root->dataType, root->symbolType);
+	symbolTableStack.top()->enter(root->children[1]->token.code, offsetStack.top(), root->dataType, root->symbolType);
 	
 	if (root->symbolType == SymbolTableItem::S_ARRAY) {
 		root->arrayShpae = root->children[2]->arrayShpae;
-		symbolTableStack.back()->setIdArrayShape(root->children[1]->token.code, root->arrayShpae);
+		symbolTableStack.top()->setIdArrayShape(root->children[1]->token.code, root->arrayShpae);
 	}
 
 	// 跟新offsetStack
-	offsetStack.back() += root->width;
+	offsetStack.top() += root->width;
 }
 
 /*
@@ -287,10 +305,10 @@ void SemanticAnalyser::ASSERTION1(SyntaxTreeNode* root) {
 	root->width = root->children[0]->width;
 
 	//
-	SymbolTable* stp = symbolTableStack.back();
-	symbolTableStack.pop_back();
-	stp->width = stp->table.empty() ? 0 : offsetStack.back() - stp->table[0].offset;
-	offsetStack.pop_back();
+	SymbolTable* stp = symbolTableStack.top();
+	symbolTableStack.pop();
+	stp->width = stp->table.empty() ? 0 : offsetStack.top() - stp->table[0].offset;
+	offsetStack.pop();
 }
 
 void SemanticAnalyser::ASSERTIONTYPE0(SyntaxTreeNode* root) {
@@ -305,44 +323,59 @@ void SemanticAnalyser::ASSERTIONTYPE1(SyntaxTreeNode* root) {
 	reverse(root->arrayShpae.begin(), root->arrayShpae.end());
 }
 
+/*
+* Function Name:        FUNCASSERTION_UpdateStack
+* Function Description: 辅助FUNCASSERTION0和FUNCASSERTION1两个过程进行符号表栈和偏移量栈的更新
+*/
+void SemanticAnalyser::FUNCASSERTION_UpdateStack(const SyntaxTreeNode* root) {
+	// 取符号表栈和偏移量栈的栈顶
+	// 堆栈数据结构：只能对栈顶进行操作，需要先取出栈顶元素
+	SymbolTable* stp = this->symbolTableStack.top();
+	this->symbolTableStack.pop();
+	int offset = this->offsetStack.top();
+	this->offsetStack.pop();
+
+	// 在当前栈顶符号表和偏移量表中加入改函数
+	this->symbolTableStack.top()->enter(root->children[FUNCASSERTION_FUNCID_CHILDPOS]->token.code, root->children[FUNCASSERTION_OFFSET_CHILDPOS]->quad, root->dataType, root->symbolType);
+	this->symbolTableStack.top()->setIdFuncTablePointer(root->children[FUNCASSERTION_FUNCID_CHILDPOS]->token.code, stp); // 设置函数符号表指针
+	this->symbolTableStack.top()->setIdArrayShape(root->children[FUNCASSERTION_FUNCID_CHILDPOS]->token.code, root->children[FUNCASSERTION_FORMALPARAM_CHILDPOS]->arrayShpae); // 设置参数列表个数
+	this->offsetStack.top() += 0;
+	
+	// 将取出的符号表和偏离量放回栈中
+	symbolTableStack.push(stp);
+	offsetStack.push(offset);
+}
+
+/*
+* Function Name:        FUNCASSERTION0
+* Function Description: 翻译 <FUNCASSERTION>::='VOID''ID'<M>'LP'<FORMALPARAM>'RP'
+*                       返回值为void的函数声明
+*/
 void SemanticAnalyser::FUNCASSERTION0(SyntaxTreeNode* root) {
+	// 更新root信息
 	root->dataType = SymbolTableItem::S_VOID;
 	root->symbolType = SymbolTableItem::S_FUNC;
 	root->n = 1;
 	root->width = -1 * root->n;
 
-	SymbolTable* stp = symbolTableStack.back();
-	symbolTableStack.pop_back();
-	int offset = offsetStack.back();
-	offsetStack.pop_back();
-
-	symbolTableStack.back()->enter(root->children[1]->token.code, root->children[2]->quad, root->dataType, root->symbolType);
-	offsetStack.back() += 0;
-	symbolTableStack.back()->setIdFuncTablePointer(root->children[1]->token.code, stp);
-	symbolTableStack.back()->setIdArrayShape(root->children[1]->token.code, root->children[4]->arrayShpae);
-
-	symbolTableStack.push_back(stp);
-	offsetStack.push_back(offset);
+	// 更新符号表栈和偏移量栈
+	this->FUNCASSERTION_UpdateStack(root);
 }
 
+/*
+* Function Name:        FUNCASSERTION1
+* Function Description: 翻译 <FUNCASSERTION>::='INT''ID'<M>'LP'<FORMALPARAM>'RP'
+*                       返回值为int的函数声明
+*/
 void SemanticAnalyser::FUNCASSERTION1(SyntaxTreeNode* root) {
+	// 更新root信息
 	root->dataType = SymbolTableItem::S_INT;
 	root->symbolType = SymbolTableItem::S_FUNC;
 	root->n = 1;
 	root->width = -1 * root->n;
 
-	SymbolTable* stp = symbolTableStack.back();
-	symbolTableStack.pop_back();
-	int offset = offsetStack.back();
-	offsetStack.pop_back();
-
-	symbolTableStack.back()->enter(root->children[1]->token.code, root->children[2]->quad, root->dataType, root->symbolType);
-	offsetStack.back() += 0;
-	symbolTableStack.back()->setIdFuncTablePointer(root->children[1]->token.code, stp);
-	symbolTableStack.back()->setIdArrayShape(root->children[1]->token.code, root->children[4]->arrayShpae);
-
-	symbolTableStack.push_back(stp);
-	offsetStack.push_back(offset);
+	// 更新符号表栈和偏移量栈
+	this->FUNCASSERTION_UpdateStack(root);
 }
 
 void SemanticAnalyser::ARRAYASSERTION0(SyntaxTreeNode* root) {
@@ -358,37 +391,67 @@ void SemanticAnalyser::ARRAYASSERTION1(SyntaxTreeNode* root) {
 	root->arrayShpae.push_back(root->children[1]->token.code);
 }
 
+/*
+* Function Name:        FORMALPARAM0
+* Function Description: 翻译 <FORMALPARAM>::=<FORMALPARAMLIST>
+*/
 void SemanticAnalyser::FORMALPARAM0(SyntaxTreeNode* root) {
-	root->arrayShpae = root->children[0]->arrayShpae;
+	root->arrayShpae = root->children[FORMALPARAM_ARRAYSHAPE_CHILDPOS]->arrayShpae; // 将声明的参数列表传到root
 }
 
+/*
+* Function Name:        FORMALPARAM0
+* Function Description: 翻译 <FORMALPARAM>::='VOID'
+*                       将声明的参数列表传到root
+*/
 void SemanticAnalyser::FORMALPARAM1(SyntaxTreeNode* root) {
-	root->arrayShpae.push_back(0);
+	root->arrayShpae.push_back(0); // 无参数列表
 }
 
+/*
+* Function Name:        FORMALPARAM0
+* Function Description: 翻译 <FORMALPARAM>::='epsilon'
+*                       将声明的参数列表传到root
+*/
 void SemanticAnalyser::FORMALPARAM2(SyntaxTreeNode* root) {
-	root->arrayShpae.push_back(0);
+	root->arrayShpae.push_back(0); // 无参数列表
 }
 
+/*
+* Function Name:        FORMALPARAMLIST0
+* Function Description: 翻译 <FORMALPARAMLIST>::='INT''ID'
+*                       函数参数列表中的变量声明语句，声明的变量为int类型
+*/
 void SemanticAnalyser::FORMALPARAMLIST0(SyntaxTreeNode* root) {
+	// 设置root节点属性
 	root->dataType = SymbolTableItem::S_INT;
 	root->symbolType = SymbolTableItem::S_VAR;
-	root->n = 1;
-	root->width = 4 * root->n;
-	root->arrayShpae.push_back(1);
-	symbolTableStack.back()->enter(root->children[1]->token.code, offsetStack.back(), root->dataType, root->symbolType);
-	offsetStack.back() += root->width;
+	root->n = VarNum;
+	root->width = VarWidth;
+	root->arrayShpae.push_back(VarShape);
+
+	// 更新符号表和偏移量表
+	symbolTableStack.top()->enter(root->children[FORMALPARAMLIST_VARID_CHILDPOS]->token.code, offsetStack.top(), root->dataType, root->symbolType);
+	offsetStack.top() += root->width;
 }
 
+/*
+* Function Name:        FORMALPARAMLIST1
+* Function Description: 翻译 <FORMALPARAMLIST>::='INT''ID''SEP'<FORMALPARAMLIST>
+*                       函数参数列表中的变量声明语句，声明的变量为int类型
+*/
 void SemanticAnalyser::FORMALPARAMLIST1(SyntaxTreeNode* root) {
+	// 设置root节点属性
 	root->dataType = SymbolTableItem::S_INT;
 	root->symbolType = SymbolTableItem::S_VAR;
-	root->n = 1;
-	root->width = 4 * root->n;
-	root->arrayShpae = root->children[3]->arrayShpae;
-	root->arrayShpae[0] += 1;
-	symbolTableStack.back()->enter(root->children[1]->token.code, offsetStack.back(), root->dataType, root->symbolType);
-	offsetStack.back() += root->width;
+	root->n = VarNum;
+	root->width = VarWidth;
+	root->arrayShpae = root->children[FORMALPARAMLIST_ARRAYSHAPE_CHILDPOS]->arrayShpae; // 将前面声明的变量加到根节点上
+	root->arrayShpae[0]++;
+
+	// 更新符号表和偏移量表
+	symbolTableStack.top()->enter(root->children[FORMALPARAMLIST_VARID_CHILDPOS]->token.code, offsetStack.top(), root->dataType, root->symbolType);
+	offsetStack.top() += root->width;
 }
 
 void SemanticAnalyser::SENBLOCK() {
@@ -403,28 +466,46 @@ void SemanticAnalyser::INNERASSERTION1() {
 
 }
 
+/*
+* Function Name:        INNERVARIDEF0
+* Function Description: 翻译 <INNERVARIDEF>::='INT''ID'
+*                       函数内部中的变量声明语句，声明的变量为int类型
+*/
 void SemanticAnalyser::INNERVARIDEF0(SyntaxTreeNode* root) {
+	// 更新root信息
 	root->dataType = SymbolTableItem::S_INT;
 	root->symbolType = SymbolTableItem::S_VAR;
-	root->n = 1;
-	root->width = 4 * root->n;
-	symbolTableStack.back()->enter(root->children[1]->token.code, offsetStack.back(), root->dataType, root->symbolType);
-	offsetStack.back() += root->width;
+	root->n = VarNum;
+	root->width = VarWidth;
 
+	// 更新符号表栈和偏移量栈
+	symbolTableStack.top()->enter(root->children[INNERVARIDEF_VARID_CHILDPOS]->token.code, offsetStack.top(), root->dataType, root->symbolType);
+	offsetStack.top() += root->width;
+
+	// 产生中间代码
 	emit("+", "$sp", to_string(root->width), "$sp");
 }
 
+/*
+* Function Name:        INNERVARIDEF1
+* Function Description: 翻译 <INNERVARIDEF>::='INT''ID'<ARRAYASSERTION>
+*                       函数内部中的变量声明语句，声明的变量为int数组类型
+*/
 void SemanticAnalyser::INNERVARIDEF1(SyntaxTreeNode* root) {
+	// 更新root信息
 	root->dataType = SymbolTableItem::S_INT;
 	root->symbolType = SymbolTableItem::S_ARRAY;
-	root->n = root->children[2]->n;
-	root->width = 4 * root->n;
-	root->arrayShpae = root->children[2]->arrayShpae;
+	root->n = root->children[INNERVARIDEF_ARRAY_CHILDPOS]->n;
+	root->width = VarWidth * root->n;
+	root->arrayShpae = root->children[INNERVARIDEF_ARRAY_CHILDPOS]->arrayShpae;
 	reverse(root->arrayShpae.begin(), root->arrayShpae.end());
-	symbolTableStack.back()->enter(root->children[1]->token.code, offsetStack.back(), root->dataType, root->symbolType);
-	symbolTableStack.back()->setIdArrayShape(root->children[1]->token.code, root->arrayShpae);
-	// symbolTableStack.back()->enterarrayShpae(root->children[1]->token.code, root->arrayShpae);
-	offsetStack.back() += root->width;
+
+	// 更新符号表栈和偏移量栈
+	symbolTableStack.top()->enter(root->children[INNERVARIDEF_VARID_CHILDPOS]->token.code, offsetStack.top(), root->dataType, root->symbolType);
+	symbolTableStack.top()->setIdArrayShape(root->children[INNERVARIDEF_VARID_CHILDPOS]->token.code, root->arrayShpae);
+	offsetStack.top() += root->width;
+
+	// 产生中间代码
 	emit("+", "$sp", to_string(root->width), "$sp");
 }
 
@@ -501,10 +582,10 @@ void SemanticAnalyser::RETURNSEN1() {
 }
 
 void SemanticAnalyser::WHILESEN(SyntaxTreeNode* root) {
-	SymbolTable* t = symbolTableStack.back();
-	symbolTableStack.pop_back();
-	t->width = t->table.empty() ? 0 : offsetStack.back() - t->table[0].offset;
-	offsetStack.pop_back();
+	SymbolTable* t = symbolTableStack.top();
+	symbolTableStack.pop();
+	t->width = t->table.empty() ? 0 : offsetStack.top() - t->table[0].offset;
+	offsetStack.pop();
 
 	emit("-", "$sp", to_string(t->width), "$sp");
 
@@ -513,15 +594,25 @@ void SemanticAnalyser::WHILESEN(SyntaxTreeNode* root) {
 	intermediateCode[root->children[3]->falseList].result = to_string(nextstat());
 }
 
+/*
+* Function Name: B
+* Function Description:
+*/
 void SemanticAnalyser::B(SyntaxTreeNode* root) {
 	root->quad = nextstat();
 }
 
+/*
+* Function Name: IFSEN0
+* Function Description: 翻译<IFSEN>::='IF''LP'<CTRL>'RP'<T><SENBLOCK>
+*/
 void SemanticAnalyser::IFSEN0(SyntaxTreeNode* root) {
-	SymbolTable* t = symbolTableStack.back();
-	symbolTableStack.pop_back();
-	t->width = t->table.empty() ? 0 : offsetStack.back() - t->table[0].offset;
-	offsetStack.pop_back();
+	// 取符号栈的最后一张表
+	SymbolTable* t = this->symbolTableStack.top();
+	symbolTableStack.pop();
+
+	t->width = t->table.empty() ? 0 : offsetStack.top() - t->table[0].offset;
+	offsetStack.pop();
 
 	emit("-", "$sp", to_string(t->width), "$sp");
 
@@ -530,10 +621,10 @@ void SemanticAnalyser::IFSEN0(SyntaxTreeNode* root) {
 }
 
 void SemanticAnalyser::IFSEN1(SyntaxTreeNode* root) {
-	SymbolTable* t = symbolTableStack.back();
-	symbolTableStack.pop_back();
-	t->width = t->table.empty() ? 0 : offsetStack.back() - t->table[0].offset;
-	offsetStack.pop_back();
+	SymbolTable* t = symbolTableStack.top();
+	symbolTableStack.pop();
+	t->width = t->table.empty() ? 0 : offsetStack.top() - t->table[0].offset;
+	offsetStack.pop();
 
 	emit("-", "$sp", to_string(t->width), "$sp");
 
@@ -549,6 +640,10 @@ void SemanticAnalyser::CTRL(SyntaxTreeNode* root) {
 	emit("j", "", "", to_string(0));
 }
 
+/*
+* Function Name: T
+* Function Description: 翻译<T>::='epsilon'
+*/
 void SemanticAnalyser::T(SyntaxTreeNode* root) {
 	root->quad = nextstat();
 	SymbolTable* t = new(nothrow)SymbolTable;
@@ -560,26 +655,26 @@ void SemanticAnalyser::T(SyntaxTreeNode* root) {
 	}
 	if (!symbolTableStack.empty())
 	{
-		t->parent = symbolTableStack.back();
+		t->parent = symbolTableStack.top();
 	}
 	lastSymbolTable = t;
-	symbolTableStack.push_back(t);
+	symbolTableStack.push(t);
 	if (offsetStack.empty())
 	{
-		offsetStack.push_back(0);
+		offsetStack.push(0);
 	}
 	else
 	{
-		int back_offset = offsetStack.back();
-		offsetStack.push_back(back_offset);
+		int back_offset = offsetStack.top();
+		offsetStack.push(back_offset);
 	}
 }
 
 void SemanticAnalyser::N(SyntaxTreeNode* root) {
-	SymbolTable* t = symbolTableStack.back();
-	symbolTableStack.pop_back();
-	t->width = t->table.empty() ? 0 : offsetStack.back() - t->table[0].offset;
-	offsetStack.pop_back();
+	SymbolTable* t = symbolTableStack.top();
+	symbolTableStack.pop();
+	t->width = t->table.empty() ? 0 : offsetStack.top() - t->table[0].offset;
+	offsetStack.pop();
 
 	emit("-", "$sp", to_string(t->width), "$sp");
 
@@ -592,18 +687,18 @@ void SemanticAnalyser::N(SyntaxTreeNode* root) {
 	}
 	if (!symbolTableStack.empty())
 	{
-		t->parent = symbolTableStack.back();
+		t->parent = symbolTableStack.top();
 	}
 	lastSymbolTable = t;
-	symbolTableStack.push_back(t);
+	symbolTableStack.push(t);
 	if (offsetStack.empty())
 	{
-		offsetStack.push_back(0);
+		offsetStack.push(0);
 	}
 	else
 	{
-		int back_offset = offsetStack.back();
-		offsetStack.push_back(back_offset);
+		int back_offset = offsetStack.top();
+		offsetStack.push(back_offset);
 	}
 
 	root->trueList = nextstat();
@@ -712,50 +807,75 @@ void SemanticAnalyser::TERM1(SyntaxTreeNode* root) {
 	}
 }
 
+/*
+* Function Name:        FACTOR0
+* Function Description: 翻译 <FACTOR>::='NUM'
+*                       函数内部中的int赋值语句
+*/
 void SemanticAnalyser::FACTOR0(SyntaxTreeNode* root) {
+	// 更新root信息：产生变量名
 	root->place = newtemp();
-	emit(":=", to_string(root->children[0]->token.code), "", root->place);
+
+	// 产生赋值语句中间代码
+	emit(":=", to_string(root->children[FACTOR0_NUM_CHILDPOS]->token.code), "", root->place);
 }
 
+/*
+* Function Name:        FACTOR1
+* Function Description: 翻译 <FACTOR>::='LP'<EXPRESSION>'RP'
+*                       函数内部中的表达式赋值语句
+*/
 void SemanticAnalyser::FACTOR1(SyntaxTreeNode* root) {
-	root->place = root->children[1]->place;
+	// 更新root信息：变量名为赋值表达式的变量名
+	root->place = root->children[FACTOR1_EXPRESSION_CHILDPOS]->place;
 }
 
-void SemanticAnalyser::FACTOR2(SyntaxTreeNode* root, map<int, string>& nameTable) {
-	string p = lookup(root->children[0]->token.code);
-	if (p == "")
-	{
-		//cerr << "ERROR: " << root->children[0]->token.code << " is undefineded\n";
-		//exit(-1);
-		throw string("ERROR: 语义分析器错误:") + nameTable[root->children[0]->token.code] + string("未定义\n");
+/*
+* Function Name:        FACTOR2
+* Function Description: 翻译 <FACTOR>::='ID'
+*                       函数内部中的变量赋值语句
+*/
+void SemanticAnalyser::FACTOR2(SyntaxTreeNode* root, map<int, string>& varTable) {
+	string t = lookup(root->children[FACTOR2_VAR_CHILDPOS]->token.code); // 查找赋值变量
+	if (t == "") {
+		// 符号表不存在该变量
+		cerr << "ERROR: 语义分析器中" << varTable[root->children[FACTOR2_VAR_CHILDPOS]->token.code] << "没有定义!" << endl;
+		exit(ERROR_SEMANTIC_ANALYSE_SYMBOLTABLE);
 	}
-	else
-	{
-		root->place = p;
-	}
-}
-
-void SemanticAnalyser::FACTOR3(SyntaxTreeNode* root, map<int, string>& nameTable) {
-	if (root->children[0]->arrayShpae.size() != 1)
-	{
-		/*cerr << "ERROR: 数组索引不完整\n";
-		exit(-1);*/
-		throw string("ERROR: 语义分析器错误:遇到不完整的数组索引\n");
-	}
-	string p = lookup(root->children[0]->token.code);
-	if (p == "")
-	{
-		//cerr << "ERROR: " << root->children[0]->token.code << "is undefineded\n";
-		//exit(-1);
-		throw string("ERROR: 语义分析器错误:") + nameTable[root->children[0]->token.code] + string("未定义\n");
-	}
-	else
-	{
-		root->place = newtemp();
-		emit("=[]", p, root->children[0]->place, root->place);
+	else {
+		root->place = t; // 变量名赋值
 	}
 }
 
+/*
+* Function Name:        FACTOR3
+* Function Description: 翻译 <FACTOR>::=<ARRAY>
+*                       函数内部中的数组赋值语句
+*/
+void SemanticAnalyser::FACTOR3(SyntaxTreeNode* root, map<int, string>& varTable) {
+	if (root->children[FACTOR3_ARRAY_CHILDPOS]->arrayShpae.size() != 1) {
+		cerr << "ERROR: 语义分析器：数组索引不完整" << endl;
+		exit(ERROR_SEMANTIC_ANALYSE);
+	}
+
+	string t = lookup(root->children[FACTOR3_ARRAY_CHILDPOS]->token.code); // 查找赋值变量
+	if (t == "")
+	{
+		// 符号表不存在该变量
+		cerr << "ERROR: 语义分析器中" << varTable[root->children[FACTOR3_ARRAY_CHILDPOS]->token.code] << "没有定义!" << endl;
+		exit(ERROR_SEMANTIC_ANALYSE_SYMBOLTABLE);
+	}
+	else {
+		root->place = newtemp(); // 定义新变量名
+		emit("=[]", t, root->children[FACTOR3_ARRAY_CHILDPOS]->place, root->place);
+	}
+}
+
+/*
+* Function Name:        FACTOR4
+* Function Description: 翻译 <FACTOR>::='ID'<CALL>
+*                       函数内部中的函数调用赋值语句
+*/
 void SemanticAnalyser::FACTOR4(SyntaxTreeNode* root, map<int, string>& nameTable) {
 	SymbolTableItem* f = find(root->children[0]->token.code);
 	if (f == NULL)
@@ -825,6 +945,11 @@ void SemanticAnalyser::FACTOR4(SyntaxTreeNode* root, map<int, string>& nameTable
 	emit(":=", "$v0", "", root->place);
 }
 
+/*
+* Function Name:        FACTOR5
+* Function Description: 翻译 <FACTOR>::='ID'<CALL>
+*                       函数内部中的函数调用赋值语句
+*/
 void SemanticAnalyser::FACTOR5(SyntaxTreeNode* root) {
 	root->place = root->children[1]->place;
 }
@@ -918,16 +1043,6 @@ void SemanticAnalyser::ACTUALPARAMLIST1(SyntaxTreeNode* root) {
 	root->params = root->children[2]->params;
 	root->params.push_back(root->children[0]->place);
 }
-
-
-
-
-
-
-
-
-
-
 
 void SemanticAnalyser::analyse(string token, SyntaxTreeNode* root, map<int, string> nameTable) {
 	if (token == ProgramToken) {

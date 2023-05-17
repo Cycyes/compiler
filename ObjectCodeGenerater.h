@@ -35,7 +35,7 @@ class objectCodeGenerator
 {
 private:
 	vector<Quaternion> intermediate_code;
-	vector<blockItem> block_group;
+	vector<BlockItem> block_group;
 	map<string, vector<pair<string, int>>> RVALUE = {
 		{"$t0",vector<pair<string,int>>{}},
 		{"$t1",vector<pair<string,int>>{}},
@@ -71,7 +71,7 @@ public:
 	vector<string> object_code;
 	vector<messageTableItem> messageTableHistory;
 	vector<analysisHistoryItem> analysisHistory;
-	objectCodeGenerator(vector<Quaternion> ic, vector<blockItem> bg, int stack_size);
+	objectCodeGenerator(vector<Quaternion> ic, vector<BlockItem> bg, int stack_size);
 	void geneObjectCode();
 	void showMessageTableHistory();
 	void showAnalysisHistory();

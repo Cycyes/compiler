@@ -3,82 +3,130 @@
 
 #include "IntermediateCodeGenerater.h"
 
-struct blockItem
-{
+/*========== Block项 ==========*/
+class BlockItem {
+	/*=== Functions ===*/
+public:
+	void init(const int& b);
+
+	/*=== Members ===*/
+public:
 	int begin;
 	int end;
-	vector<string> wait_variable;
-	vector<string> useless_variable;
-	vector<string> active_variable;
+	vector<string> waitVar;
+	vector<string> uselessVar;
+	vector<string> activeVar;
 };
-struct DAGitem
-{
-	bool useful = false;
-	bool isleaf;
+/*========== Block项 ==========*/
+
+
+
+/*========== DAG项 ==========*/
+
+class DAGItem {
+	/*=== Static Consts ===*/
+public:
+	static const int TopoStructInit = -1;
+	static const int MaxChildrenNum = 3;
+
+	/*=== Functions ===*/
+public:
+	DAGItem();
+	DAGItem(const Quaternion& q);
+	DAGItem(const string& value, const bool& isLeaf);
+	DAGItem(const string& op, const int& child0, const int& child1, const int& child2);
+	~DAGItem();
+
+	bool operator == (const DAGItem& d);
+
+	/*=== Members ===*/
+public:
+	bool flag;
+	bool isLeaf;
+	bool isLeft;
+
+	// 拓扑结构
+	int parent;
+	int children[MaxChildrenNum];
+
 	string value;
 	string op;
-	vector<string> label;
-	int parent = -1;
-	int left_child = -1;
-	int right_child = -1;
-	int tri_child = -1;
-	bool isremain = false;
-	Quaternion code;
-	bool operator== (DAGitem b)
-	{
-		bool f1 = this->isleaf == b.isleaf;
-		bool f2 = this->value == b.value;
-		bool f3 = this->op == b.op;
-		bool f4 = this->label.size() == b.label.size();
-		bool f5 = this->parent == b.parent;
-		bool f6 = this->left_child == b.left_child;
-		bool f7 = this->right_child == b.right_child;
-		bool f8 = true;
-		for (auto i = 0; i < this->label.size() && i < b.label.size(); i++)
-		{
-			if (this->label[i] != b.label[i])
-			{
-				f8 = false;
-				break;
-			}
-		}
-		return f1 & f2 & f3 & f4 & f5 & f6 & f7 & f8;
-	}
+
+	Quaternion quaternion;
+
+	vector<string> labelList;
+
 };
-class optimizerAnalysis
-{
-private:
-	map<int, string> name_table;
-	SymbolTable* global_table;
-	map<int, string> label_map;
-	int temp_counter = 0;
-	vector<vector<DAGitem>> DAG_group;
-	vector<Quaternion> unoptimized_code;
-	vector<blockItem> unoptimized_block;
-	bool preOptimize();
-	void partition();
-	vector<DAGitem> geneDAG(int block_no);
-	void _utilizeChildren(vector<DAGitem>& DAG, int now);
-	string newtemp();
-	void optimize();
-	bool is_num(string str)
-	{
-		stringstream sin(str);
-		int d;
-		char c;
-		if (!(sin >> d))
-			return false;
-		if (sin >> c)
-			return false;
-		return true;
-	}
+
+/*========== DAG项 ==========*/
+
+
+
+/*========== Optimizer ==========*/
+
+class Optimizer {
+	/*=== Static Consts ===*/
 public:
-	vector<Quaternion> intermediate_code;
-	vector<blockItem> block_group;
-	optimizerAnalysis(map<int, string> nt, SymbolTable* gt, vector<Quaternion> ic);
-	void showIntermediateCode();
-	void showBlockGroup();
-	void showDAG();
-	double analysis();
+	static const int DAG_STATE_END = -1;
+	static const int DAG_STATE_PrepareNode = 1;
+	static const int DAG_STATE_CombineKnown = 2;
+	static const int DAG_STATE_CombineKnown1 = 21;
+	static const int DAG_STATE_CombineKnown2 = 22;
+	static const int DAG_STATE_CombineKnown3 = 23;
+	static const int DAG_STATE_CombineKnown4 = 24;
+	static const int DAG_STATE_FindCommonExpression = 3;
+	static const int DAG_STATE_FindCommonExpression1 = 31;
+	static const int DAG_STATE_FindCommonExpression2 = 32;
+	static const int DAG_STATE_RemoveUselessAssignments = 4;
+
+	/*=== Functions ===*/
+private:
+	bool is_num(const string& str);
+	bool judgeDAGNodeIsNum(const int& no, const vector<DAGItem>& DAG);
+
+	int operateBopC(const string& op, const int& Bno, const int& Cno, const vector<DAGItem>& DAG);
+
+	void findOrCreateDAGNodeByValue(int& no, bool& flag, vector<DAGItem>& DAG, const string& v);
+	void findOrCreateDAGNodeByChild(int& no, const string& op, vector<DAGItem>& DAG, const int& Bno, const int& Cno = DAGItem::TopoStructInit);
+	void deleteNewDAGNode(const int& no, const bool& flag, vector<DAGItem>& DAG);
+
+	string newtemp();
+	void utilizeChildren(vector<DAGItem>& DAG, int now);
+
+	string getChildValue(const int& i, const int& p, const vector<DAGItem>& DAG);
+
+	void preGenerateBlock();
+	void generateBlock();
+	vector<DAGItem> generateDAG(const int& blkno);
+
+public:
+	Optimizer(const map<int, string>& varTable, SymbolTable* gSymbolTable, const vector<Quaternion>& intermediateCode);
+	~Optimizer();
+
+	void optimize();
+	void analyse();
+
+	/*=== Members ===*/
+private:
+	int tmpCnt = 0;
+
+	map<int, string> varTable; // 变量id转名称
+	map<int, string> labelMap; // 将四元式中的数字转化为目标代码的符号
+	SymbolTable* gSymbolTable;
+
+	vector<Quaternion> initCode;
+	vector<BlockItem> initBlock;
+
+	vector<vector<DAGItem>> DAGs;
+
+public:
+	int optimizeCnt;
+	double optimizeRate;
+
+	vector<Quaternion> intermediateCode;
+	vector<BlockItem> block;
 };
-#endif // !OPTIMIZER
+
+/*========== Optimizer ==========*/
+
+#endif

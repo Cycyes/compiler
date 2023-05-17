@@ -1,6 +1,6 @@
 #include "ObjectCodeGenerater.h"
 
-objectCodeGenerator::objectCodeGenerator(vector<Quaternion> ic, vector<blockItem> bg, int stack_size)
+objectCodeGenerator::objectCodeGenerator(vector<Quaternion> ic, vector<BlockItem> bg, int stack_size)
 {
 	intermediate_code = ic;
 	block_group = bg;
@@ -22,7 +22,7 @@ vector<messageTableItem> objectCodeGenerator::geneMessageTable(int block_no)
 		{
 			if (message_link.find(TAS.arg1) == message_link.end())
 			{
-				if (TAS.arg1[0] == 'G' || find(block_group[block_no].wait_variable.begin(), block_group[block_no].wait_variable.end(), TAS.arg1) != block_group[block_no].wait_variable.end())
+				if (TAS.arg1[0] == 'G' || find(block_group[block_no].waitVar.begin(), block_group[block_no].waitVar.end(), TAS.arg1) != block_group[block_no].waitVar.end())
 				{
 					message_link[TAS.arg1] = pair<int, bool>(INT_MAX, true);
 				}
@@ -38,7 +38,7 @@ vector<messageTableItem> objectCodeGenerator::geneMessageTable(int block_no)
 		{
 			if (message_link.find(TAS.arg2) == message_link.end())
 			{
-				if (TAS.arg2[0] == 'G' || find(block_group[block_no].wait_variable.begin(), block_group[block_no].wait_variable.end(), TAS.arg2) != block_group[block_no].wait_variable.end())
+				if (TAS.arg2[0] == 'G' || find(block_group[block_no].waitVar.begin(), block_group[block_no].waitVar.end(), TAS.arg2) != block_group[block_no].waitVar.end())
 				{
 					message_link[TAS.arg2] = pair<int, bool>(INT_MAX, true);
 				}
@@ -54,7 +54,7 @@ vector<messageTableItem> objectCodeGenerator::geneMessageTable(int block_no)
 		{
 			if (message_link.find(TAS.result) == message_link.end())
 			{
-				if (TAS.result[0] == 'G' || find(block_group[block_no].wait_variable.begin(), block_group[block_no].wait_variable.end(), TAS.result) != block_group[block_no].wait_variable.end())
+				if (TAS.result[0] == 'G' || find(block_group[block_no].waitVar.begin(), block_group[block_no].waitVar.end(), TAS.result) != block_group[block_no].waitVar.end())
 				{
 					message_link[TAS.result] = pair<int, bool>(INT_MAX, true);
 				}

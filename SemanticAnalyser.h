@@ -19,6 +19,8 @@ public:
 	Quaternion(const string& op = "", const string& arg1 = "", const string& arg2 = "", const string& result = "");
 	~Quaternion();
 
+	friend ostream& operator<< (ostream& output, const Quaternion& q);
+
 	/*=== Members ===*/
 public:
 	string op;
@@ -132,7 +134,7 @@ public:
 
 	vector<int> arrayShpae;
 	vector<string> params;
-	string place;
+	string place; // 变量名
 
 	int quad;
 	int trueList;
@@ -152,6 +154,27 @@ public:
 class SemanticAnalyser {
 	/*=== Static Consts ===*/
 	static const int TmpCntInit = -1;
+	static const int VarNum = 1;
+	static const int VarWidth = 4;
+	static const int VarShape = 1;
+
+	static const int FUNCASSERTION_FUNCID_CHILDPOS = 1;
+	static const int FUNCASSERTION_OFFSET_CHILDPOS = 2;
+	static const int FUNCASSERTION_FORMALPARAM_CHILDPOS = 4;
+
+	static const int FORMALPARAM_ARRAYSHAPE_CHILDPOS = 0;
+
+	static const int FORMALPARAMLIST_VARID_CHILDPOS = 1;
+	static const int FORMALPARAMLIST_ARRAYSHAPE_CHILDPOS = 3;
+
+	static const int INNERVARIDEF_VARID_CHILDPOS = 1;
+	static const int INNERVARIDEF_ARRAY_CHILDPOS = 2;
+
+	static const int FACTOR0_NUM_CHILDPOS = 0;
+	static const int FACTOR1_EXPRESSION_CHILDPOS = 1;
+	static const int FACTOR2_VAR_CHILDPOS = 0;
+	static const int FACTOR3_ARRAY_CHILDPOS = 0;
+
 	const string ProgramToken = "<PROGRAM>::=<M><ASSERTIONS>";
 	const string MToken = "<M>::='epsilon'";
 	const string ASSERTIONSToken0 = "<ASSERTIONS>::=<ASSERTION>";
@@ -224,6 +247,9 @@ private:
 	SymbolTableItem* find(int id);
 	int nextstat();
 	void emit(string op, string arg1, string arg2, string restult);
+
+	// 公共函数
+	void FUNCASSERTION_UpdateStack(const SyntaxTreeNode* root);
 
 	void Program();
 	void M(SyntaxTreeNode* root);
@@ -300,8 +326,8 @@ public:
 	/*=== Members ===*/
 private:
 	int tmpCnt;
-	vector<SymbolTable*> symbolTableStack;
-	vector<int> offsetStack;
+	stack<SymbolTable*> symbolTableStack; // 符号表栈
+	stack<int> offsetStack; // 偏移量栈
 
 public:
 	SymbolTable* lastSymbolTable;

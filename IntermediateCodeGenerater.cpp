@@ -68,7 +68,19 @@ void IntermediateCodeGenerater::generateTreeLevel(SyntaxTreeNode* n, const int& 
 	}
 }
 
-void IntermediateCodeGenerater::analyse() {
+void IntermediateCodeGenerater::analyse(const string& filename) {
+
+	// 打开文件
+	ofstream outfile(filename, ios::out | ios::binary);
+	if (!outfile.is_open()) {
+		cerr << "ERROR: 中间代码生成器无法打开输出文件!" << endl;
+		exit(ERROR_OPEN_FILE);
+	}
+	outfile << "digraph mygraph {\n";
+	int cnt = 0;
+	vector<int> cntStack;
+
+	// 初始化栈
 	stack<int> stateStack; // 状态栈
 	stack<Token> symbolStack; // 符号栈
 	stateStack.push(0);
@@ -103,7 +115,11 @@ void IntermediateCodeGenerater::analyse() {
 		ActionItem actionItem = this->syntaxAnalyser.ACTION[stateStack.top()][pos];
 
 		switch (actionItem.status) {
-			case ActionItem::A_ACC:
+			case ActionItem::A_ACC: {
+				// 文件输出
+				outfile << "}";
+				outfile.close();
+
 				// 完成分析，生成语法树
 				this->generateTreeLevel(this->syntaxTreeInfo.root, 0);
 				return;
@@ -118,7 +134,8 @@ void IntermediateCodeGenerater::analyse() {
 					exit(ERROR_INTERMEDIATE_CODE_GENERATER);
 				}
 				break;
-			case ActionItem::A_SHIFT: // 移进
+			}
+			case ActionItem::A_SHIFT: { // 移进
 				stnp = new(nothrow) SyntaxTreeNode;
 				if (!stnp) {
 					cerr << "ERROR: 中间代码生成器生成语法树节点时空间不足" << endl;
@@ -131,6 +148,10 @@ void IntermediateCodeGenerater::analyse() {
 				stateStack.push(actionItem.nextState);
 				symbolStack.push(token);
 
+				// 文件输出
+				cntStack.push_back(cnt);
+				outfile << "n" << cnt++ << "[label=\"" << token.str << "\",color=red];" << endl;
+
 				// 取下一个token
 				if (token == epsilonToken) {
 					token = nextEpsilonToken;
@@ -139,14 +160,20 @@ void IntermediateCodeGenerater::analyse() {
 					token = this->lexcalAnalyser.getNextToken();
 				}
 				break;
-			case ActionItem::A_REDUCTION: // 规约
+			}
+			case ActionItem::A_REDUCTION: { // 规约
 
 				/* 更新符号栈和状态栈 */
 				// 逆向遍历ACTION表项的规约式右部
+				vector<int> cntLeft;
 				for (int i = actionItem.production.second.size() - 1; i >= 0; i--) {
 					if (symbolStack.top().str == actionItem.production.second[i]) { // 规约出栈
 						symbolStack.pop();
 						stateStack.pop();
+
+						// 
+						cntLeft.push_back(cntStack.back());
+						cntStack.pop_back();
 					}
 					else {
 						cerr << "ERROR: 中间代码生成器扫描到第" << to_string(lineCnt) << "行的符号" << token.str << "时发生错误" << endl;
@@ -156,6 +183,20 @@ void IntermediateCodeGenerater::analyse() {
 				symbolStack.push(Token(actionItem.production.first, -1));
 				pos = this->syntaxAnalyser.getVNPos(symbolStack.top().str);
 				stateStack.push(this->syntaxAnalyser.GOTO[stateStack.top()][pos]);
+
+				// 文件输出
+				cntStack.push_back(cnt);
+				outfile << "n" << cnt++ << "[label=\"" << actionItem.production.first << "\"];\n";
+
+				if (cntLeft.size() != 0) {
+					for (auto t = cntLeft.begin(); t != cntLeft.end(); t++) {
+						outfile << "n" << cnt - 1 << " -> " << "n" << *t << ";\n";
+					}
+				}
+				else { //空串
+					outfile << "e" << cnt << "[label=\"@\"];\n";
+					outfile << "n" << cnt - 1 << " -> " << "e" << cnt << ";\n";
+				}
 
 				// 更新语法树栈
 				stnp = new(nothrow) SyntaxTreeNode;
@@ -178,10 +219,32 @@ void IntermediateCodeGenerater::analyse() {
 				this->semanticAnalyser.analyse(this->generateProductionStr(actionItem.production), stnp, this->lexcalAnalyser.varTable);
 
 				break;
-			default:
+			}
+			default: {
 				break;
+			}
 		}
 	}
+}
+
+void IntermediateCodeGenerater::drawSyntaxTree(const string& s, const string& d) {
+	string cmd = "dot -Tpng " + s + " -o " + d;
+	system(cmd.c_str());
+}
+
+void IntermediateCodeGenerater::showIntermediateCode(const string& filename) {
+	ofstream outfile(filename, ios::out | ios::binary);
+	if (!outfile.is_open()) {
+		cerr << "ERROR: 中间代码文件打开失败!" << endl;
+		exit(ERROR_OPEN_FILE);
+	}
+
+	for (int i = 0; i < this->semanticAnalyser.intermediateCode.size(); i++) {
+		cout << this->semanticAnalyser.intermediateCode[i] << endl;
+		outfile << this->semanticAnalyser.intermediateCode[i] << endl;
+	}
+
+	outfile.close();
 }
 
 /*============================== 中间代码生成器 ==============================*/

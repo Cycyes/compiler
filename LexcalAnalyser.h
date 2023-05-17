@@ -18,6 +18,11 @@ public:
 	bool operator != (const Token& t);
 };
 
+struct TOKEN {
+	string token;
+	string value;
+};
+
 class LexcalAnalyser {
 	/*=== Enum ===*/
 public:
@@ -94,6 +99,7 @@ public:
 	~LexcalAnalyser();
 
 	void setSourceCode(string s);
+	
 	Token getNextToken();
 
 	/*=== Members ===*/
