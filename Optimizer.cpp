@@ -16,6 +16,7 @@ void BlockItem::init(const int& b) {
 
 DAGItem::DAGItem() {
 	this->flag = false;
+	this->isLeft = false;
 
 	this->parent = TopoStructInit;
 	memset(this->children, TopoStructInit, sizeof(this->children));
@@ -34,6 +35,7 @@ DAGItem::DAGItem(const Quaternion& q) {
 
 DAGItem::DAGItem(const string& value, const bool& isLeaf) {
 	this->flag = false;
+	this->isLeft = false;
 
 	this->parent = TopoStructInit;
 	memset(this->children, TopoStructInit, sizeof(this->children));
@@ -44,6 +46,7 @@ DAGItem::DAGItem(const string& value, const bool& isLeaf) {
 
 DAGItem::DAGItem(const string& op, const int& child0, const int& child1, const int& child2) {
 	this->flag = false;
+	this->isLeft = false;
 
 	this->parent = TopoStructInit;
 	memset(this->children, TopoStructInit, sizeof(this->children));
@@ -69,7 +72,7 @@ bool DAGItem::operator == (const DAGItem& d) {
 	if (this->labelList.size() != d.labelList.size()) {
 		return false;
 	}
-	for (int i = 0; i < this->labelList.size(); i++) {
+	for (unsigned int i = 0; i < this->labelList.size(); i++) {
 		if (this->labelList[i] != d.labelList[i]) {
 			return false;
 		}
@@ -97,19 +100,6 @@ Optimizer::Optimizer(const map<int, string>& varTable, SymbolTable* gSymbolTable
 
 Optimizer::~Optimizer() {
 
-}
-
-bool Optimizer::is_num(const string& str) {
-	stringstream s(str);
-
-	int d;
-	if (!(s >> d))
-		return false;
-	char c;
-	if (s >> c)
-		return false;
-
-	return true;
 }
 
 bool Optimizer::judgeDAGNodeIsNum(const int& no, const vector<DAGItem>& DAG) {
@@ -188,16 +178,16 @@ void Optimizer::preGenerateBlock() {
 		}
 		else if (i->second == "main" && mainId != NOT_FOUND) {
 			cerr << "ERROR: 静态语义分析错误：定义了多个main函数" << endl;
-			exit(ERROR_OPTIMIZER);
+			exit(ERROR_OPTIMIZER_REDEFINEMAIN);
 		}
 	}
 	if (mainId == NOT_FOUND) {
 		cerr << "ERROR: 静态语义分析错误：未定义main函数" << endl;
-		exit(ERROR_OPTIMIZER);
+		exit(ERROR_OPTIMIZER_NOTDEFINEMAIN);
 	}
 
 	// 在gSymbolTable中找到offset
-	for (int i = 0; i < this->gSymbolTable->table.size(); i++) {
+	for (unsigned int i = 0; i < this->gSymbolTable->table.size(); i++) {
 		if (this->gSymbolTable->table[i].id == mainId) {
 			mainOffset = gSymbolTable->table[i].offset;
 			break;
@@ -209,10 +199,10 @@ void Optimizer::preGenerateBlock() {
 	int varLabelCnt = 0;
 	int funcLabelCnt = 0;
 	// 遍历中间代码
-	for (int i = 0; i < intermediateCode.size(); i++) {
+	for (unsigned int i = 0; i < intermediateCode.size(); i++) {
 		Quaternion* q = &intermediateCode[i]; // 定义指针，简化引用长度
 
-		if (q->op == "jal") { // jal四元式
+		if (q->op == "jal") { // jal四元式，函数调用
 			// 判断四元式result是否第一次出现
 			if (labelMap.find(stoi(q->result)) == labelMap.end()) {
 				labelMap[stoi(q->result)] = "F" + to_string(funcLabelCnt++);
@@ -228,7 +218,7 @@ void Optimizer::preGenerateBlock() {
 	}
 
 	vector<Quaternion> code;
-	for (int i = 0; i < intermediateCode.size(); i++) {
+	for (unsigned int i = 0; i < intermediateCode.size(); i++) {
 		Quaternion q = intermediateCode[i];
 		if (labelMap.find(i) != labelMap.end()) {
 			Quaternion label = Quaternion(labelMap[i], "", "", "");
@@ -244,7 +234,7 @@ void Optimizer::generateBlock() {
 	BlockItem item;
 
 	// 遍历中间代码
-	for (int i = 0; i < intermediateCode.size(); i++) {
+	for (int i = 0; i < (int)intermediateCode.size(); i++) {
 
 		Quaternion q = intermediateCode[i]; // 引用，减轻后面代码长度
 
@@ -271,7 +261,7 @@ void Optimizer::generateBlock() {
 		}
 
 		// 块结束
-		bool enterFlag = ((i + 1 < intermediateCode.size() && (intermediateCode[i + 1].op[0] == 'L' || intermediateCode[i + 1].op[0] == 'F')) || q.op[0] == 'j' || q.op == "ret" || q.op == "break");
+		bool enterFlag = ((i + 1 < (int)intermediateCode.size() && (intermediateCode[i + 1].op[0] == 'L' || intermediateCode[i + 1].op[0] == 'F')) || q.op[0] == 'j' || q.op == "ret" || q.op == "break");
 		if (enterFlag) {
 			item.end = i;
 			block.push_back(item);
@@ -279,13 +269,13 @@ void Optimizer::generateBlock() {
 	}
 
 	map<string, int> labelLoop;
-	for (int i = 0; i < intermediateCode.size(); i++) {
+	for (unsigned int i = 0; i < intermediateCode.size(); i++) {
 		if (intermediateCode[i].op[0] == 'L') {
 			labelLoop[intermediateCode[i].op] = i;
 		}
 	}
 
-	for (int i = 0; i < block.size(); i++) {
+	for (unsigned int i = 0; i < block.size(); i++) {
 		BlockItem* bip = &block[i]; // 引用，减轻后面代码长度
 
 		if (intermediateCode[bip->end].op == "ret") { // 该基本块是函数返回块
@@ -298,7 +288,7 @@ void Optimizer::generateBlock() {
 			int p = block[i + 1].begin;
 			int prep = p - 1;
 
-			while (prep < intermediateCode.size()) {
+			while (prep < (int)intermediateCode.size()) {
 				if (labelLoop.find(intermediateCode[prep].result) != labelLoop.end() && labelLoop[intermediateCode[prep].result] < p) {
 					p = labelLoop[intermediateCode[prep].result];
 					prep = labelLoop[intermediateCode[prep].result];
@@ -308,7 +298,7 @@ void Optimizer::generateBlock() {
 
 			vector<string> realWaitVar;
 
-			while (p < intermediateCode.size() && intermediateCode[p].op[0] != 'F') {
+			while (p < (int)intermediateCode.size() && intermediateCode[p].op[0] != 'F') {
 				if (find(bip->waitVar.begin(), bip->waitVar.end(), intermediateCode[p].arg1) != bip->waitVar.end() && find(realWaitVar.begin(), realWaitVar.end(), intermediateCode[p].arg1) == realWaitVar.end()) {
 					realWaitVar.push_back(intermediateCode[p].arg1);
 				}
@@ -318,7 +308,7 @@ void Optimizer::generateBlock() {
 				p++;
 			}
 
-			for (int j = 0; j < bip->waitVar.size(); j++) {
+			for (unsigned int j = 0; j < bip->waitVar.size(); j++) {
 				if (find(realWaitVar.begin(), realWaitVar.end(), bip->waitVar[j]) == realWaitVar.end()) {
 					bip->uselessVar.push_back(bip->waitVar[j]);
 				}
@@ -331,7 +321,7 @@ void Optimizer::generateBlock() {
 void Optimizer::findOrCreateDAGNodeByValue(int& no, bool& flag, vector<DAGItem>& DAG, const string& v) {
 	// 查找是否有该结点
 	no = NOT_FOUND;
-	for (int i = 0; i < DAG.size(); i++) {
+	for (unsigned int i = 0; i < DAG.size(); i++) {
 		if ((DAG[i].isLeaf && DAG[i].value == v) || find(DAG[i].labelList.begin(), DAG[i].labelList.end(), v) != DAG[i].labelList.end()) {
 			no = i;
 			flag = false;
@@ -351,7 +341,7 @@ void Optimizer::findOrCreateDAGNodeByValue(int& no, bool& flag, vector<DAGItem>&
 void Optimizer::findOrCreateDAGNodeByChild(int& no, const string& op, vector<DAGItem>& DAG, const int& Bno, const int& Cno) {
 	// 查找是否有该结点
 	no = NOT_FOUND;
-	for (int i = 0; i < DAG.size(); i++) {
+	for (unsigned int i = 0; i < DAG.size(); i++) {
 		if (!DAG[i].isLeaf && DAG[i].children[0] == Bno && DAG[i].op == op && (Cno == DAGItem::TopoStructInit || (DAG[i].children[1] != DAGItem::TopoStructInit && DAG[i].children[1] == Cno))) {
 			no = i;
 			break;
@@ -416,7 +406,7 @@ vector<DAGItem> Optimizer::generateDAG(const int& blkno) {
 			
 			// 更新叶子节点的值
 			if (A[0] == '$' || A == "[$sp]") {
-				for (int j = 0; j < DAG.size(); j++) {
+				for (unsigned int j = 0; j < DAG.size(); j++) {
 					if (DAG[j].isLeaf && DAG[j].value == A) {
 						DAG[j].value = "-" + A;
 						break;
@@ -465,7 +455,7 @@ vector<DAGItem> Optimizer::generateDAG(const int& blkno) {
 							DAG[Cno].parent = n;
 							DAG[Ano].parent = n;
 							//
-							for (int j = 0; j < DAG.size(); j++) {
+							for (unsigned int j = 0; j < DAG.size(); j++) {
 								if (DAG[j].isLeaf && DAG[j].value == A) {
 									DAG[j].value = "-" + A;
 									break;
@@ -518,7 +508,7 @@ vector<DAGItem> Optimizer::generateDAG(const int& blkno) {
 					break;
 				}
 				case DAG_STATE_RemoveUselessAssignments: {
-					for (int j = 0; j < DAG.size(); j++) {
+					for (unsigned int j = 0; j < DAG.size(); j++) {
 						if (DAG[j].isLeaf && DAG[j].value == A) { // A是叶子节点
 							DAG[j].value = "-" + A;
 							break;
@@ -550,7 +540,7 @@ void assignByMap(map<string, string>& tm, string& s) {
 void Optimizer::optimize() {
 	vector<Quaternion> optimizedCode;
 	// 遍历所有block
-	for (int blkno = 0; blkno < block.size(); blkno++) {
+	for (unsigned int blkno = 0; blkno < block.size(); blkno++) {
 		vector<DAGItem> DAG = generateDAG(blkno);
 		this->DAGs.push_back(DAG);
 		BlockItem newBlock;
@@ -571,7 +561,7 @@ void Optimizer::optimize() {
 		waitVar.push_back("$t7");
 		waitVar.push_back("[$sp]");
 		// 遍历DAG节点，更新waitVar
-		for (int i = 0; i < DAG.size(); i++) {
+		for (unsigned int i = 0; i < DAG.size(); i++) {
 			if (DAG[i].isLeft) {
 				if (DAG[i].quaternion.arg1 != "" && find(waitVar.begin(), waitVar.end(), DAG[i].quaternion.arg1) == waitVar.end()) {
 					waitVar.push_back(DAG[i].quaternion.arg1);
@@ -582,11 +572,11 @@ void Optimizer::optimize() {
 			}
 		}
 		// 遍历DAG节点
-		for (int i = 0; i < DAG.size(); i++) {
+		for (unsigned int i = 0; i < DAG.size(); i++) {
 			if (!DAG[i].isLeft) {
-				if (DAG[i].children[2] == DAGItem::TopoStructInit) {
+				if (DAG[i].children[2] == DAGItem::TopoStructInit) { // 非3型式
 					vector<string> newLabelList;
-					for (int j = 0; j < DAG[i].labelList.size(); j++) {
+					for (unsigned int j = 0; j < DAG[i].labelList.size(); j++) {
 						if (DAG[i].labelList[j][0] == 'G' || find(waitVar.begin(), waitVar.end(), DAG[i].labelList[j]) != waitVar.end()) {
 							newLabelList.push_back(DAG[i].labelList[j]);
 							DAG[i].flag = true;
@@ -600,20 +590,20 @@ void Optimizer::optimize() {
 						DAG[i].labelList.push_back(this->newtemp());
 					}
 				}
-				else {
+				else { // 3型式
 					DAG[i].flag = true;
 					this->utilizeChildren(DAG, i);
 				}
 			}
 		}
 		// 遍历DAG节点
-		for (int i = 0; i < DAG.size(); i++) {
+		for (unsigned int i = 0; i < DAG.size(); i++) {
 			if (DAG[i].isLeft) {
 				optimizedCode.push_back(DAG[i].quaternion);
 			}
 			else {
 				if (DAG[i].isLeaf) {
-					for (int j = 0; j < DAG[i].labelList.size(); j++) {
+					for (unsigned int j = 0; j < DAG[i].labelList.size(); j++) {
 						string v = DAG[i].value[0] == '-' ? DAG[i].value.substr(1) : DAG[i].value;
 						Quaternion q(":=", v, "", DAG[i].labelList[j]);
 						optimizedCode.push_back(q);
@@ -630,7 +620,7 @@ void Optimizer::optimize() {
 					else {
 						Quaternion q(DAG[i].op, lv, rv, DAG[i].labelList[0]);
 						optimizedCode.push_back(q);
-						for (int j = 1; j < DAG[i].labelList.size(); j++) {
+						for (unsigned int j = 1; j < DAG[i].labelList.size(); j++) {
 							Quaternion q(":=", DAG[i].labelList[0], "", DAG[i].labelList[j]);
 							optimizedCode.push_back(q);
 						}
@@ -639,11 +629,11 @@ void Optimizer::optimize() {
 			}
 		}
 		// 遍历新产生的中间代码
-		for (int i = newBlock.begin; i < optimizedCode.size(); i++) {
+		for (unsigned int i = newBlock.begin; i < optimizedCode.size(); i++) {
 			Quaternion q = optimizedCode[i];
 			if (q.op == "+" && q.arg1 == "$sp" && is_num(q.arg2) && q.result == "$sp") {
 				int sum = atoi(q.arg2.c_str());
-				while (i + 1 < optimizedCode.size() && optimizedCode[i + 1].op == "+" && optimizedCode[i + 1].arg1 == "$sp" && is_num(optimizedCode[i + 1].arg2) && optimizedCode[i + 1].result == "$sp") {
+				while (i + 1 < (int)optimizedCode.size() && optimizedCode[i + 1].op == "+" && optimizedCode[i + 1].arg1 == "$sp" && is_num(optimizedCode[i + 1].arg2) && optimizedCode[i + 1].result == "$sp") {
 					sum += atoi(optimizedCode[i + 1].arg2.c_str());
 					optimizedCode.erase(optimizedCode.begin() + i + 1);
 				}
@@ -655,7 +645,7 @@ void Optimizer::optimize() {
 
 	map<string, string> tmpVMap;
 	int newTmpCnt = 0;
-	for (int i = 0; i < optimizedCode.size(); i++) {
+	for (unsigned int i = 0; i < optimizedCode.size(); i++) {
 		Quaternion q = optimizedCode[i];
 		if ((q.arg1[0] == 'T' || q.arg1[0] == 'S') && tmpVMap.find(q.arg1) == tmpVMap.end()) {
 			tmpVMap[q.arg1] = "T" + to_string(newTmpCnt++);
@@ -667,15 +657,13 @@ void Optimizer::optimize() {
 			tmpVMap[q.result] = "T" + to_string(newTmpCnt++);
 		}
 	}
-	for (int i = 0; i < optimizedCode.size(); i++) {
-		
+	for (unsigned int i = 0; i < optimizedCode.size(); i++) {
 		assignByMap(tmpVMap, optimizedCode[i].arg1);
 		assignByMap(tmpVMap, optimizedCode[i].arg2);
 		assignByMap(tmpVMap, optimizedCode[i].result);
-		
 	}
 
-	// 
+	//
 	initBlock = block;
 	initCode = intermediateCode;
 	intermediateCode = optimizedCode;
@@ -699,9 +687,3 @@ void Optimizer::analyse() {
 }
 
 /*============================== Optimizer ==============================*/
-
-
-
-
-
-

@@ -77,7 +77,7 @@ void SymbolTable::enter(const int& id, const int& o, const SymbolTableItem::Data
 	for (int i = 0; i < table.size(); i++) {
 		if (table[i].id == id) {
 			cerr << "ERROR: 语义分析器: 符号表id重定义: " << to_string(id) << "重定义" << endl;
-			exit(ERROR_SEMANTIC_ANALYSE_SYMBOLTABLE);
+			exit(ERROR_SEMANTIC_ANALYSE_SYMBOLTABLE_REDEFINE);
 		}
 	}
 
@@ -122,9 +122,6 @@ SyntaxTreeNode::SyntaxTreeNode() {
 
 	n = 0;
 	width = 0;
-
-	x = -1;
-	y = -1;
 
 	clear();
 }
@@ -215,15 +212,42 @@ SymbolTableItem* SemanticAnalyser::find(int id) {
 	return NULL;
 }
 
+/*
+* Function Description: 返回下一条语句的位置
+*/
 int SemanticAnalyser::nextstat() {
 	return intermediateCode.size();
 }
 
+/*
+* Function Description: 将四元式加入中间代码
+*/
 void SemanticAnalyser::emit(string op, string arg1, string arg2, string result) {
 	Quaternion q(op, arg1, arg2, result);
 	intermediateCode.push_back(q);
 }
 
+
+/*
+* Function Description: 将栈顶指针-4，再将堆栈中的值存储在寄存器
+*/
+void SemanticAnalyser::loadRegFromSp(const string& r) {
+	this->emit("-", "$sp", to_string(VarWidth), "$sp");
+	this->emit(":=", "[$sp]", "", r);
+}
+
+/*
+* Function Description: 将寄存器存储在堆栈中，并将栈顶指针+4
+*/
+void SemanticAnalyser::saveRegInSp(const string& r) {
+	this->emit(":=", r, "", "[$sp]");
+	this->emit("+", "$sp", to_string(VarWidth), "$sp");
+}
+
+/*
+* Function Name: 
+* Function Description: 翻译 <PROGRAM>::=<M><ASSERTIONS>
+*/
 void SemanticAnalyser::Program() {
 	gSymbolTable = symbolTableStack.top();
 	symbolTableStack.pop();
@@ -233,7 +257,7 @@ void SemanticAnalyser::Program() {
 
 /*
 * Function Name: M
-* Function Description: 翻译 <PROGRAM>::=<M><ASSERTIONS> <M>::='epsilon' 中的  <M>::='epsilon'
+* Function Description: 翻译 <M>::='epsilon'
 */
 void SemanticAnalyser::M(SyntaxTreeNode* root) {
 	root->quad = nextstat(); // 计算quad赋值给根节点
@@ -271,22 +295,23 @@ void SemanticAnalyser::ASSERTIONS1() {
 }
 
 /*
-* 
 * ASSERTION变量
+* <ASSERTION>::='INT''ID'<ASSERTIONTYPE>'DEL'
 */
 void SemanticAnalyser::ASSERTION0(SyntaxTreeNode* root) {
 	// 更新root节点内容
-	root->dataType = SymbolTableItem::S_INT;
-	root->symbolType = root->children[2]->symbolType;
-	root->n = root->children[2]->n;
-	root->width = 4 * root->n;
+	root->dataType = SymbolTableItem::S_INT; // 数据类型为INT
+	root->symbolType = root->children[ASSERTION0_ASSERTIONTYPE_CHILDPOS]->symbolType; // 继承符号类型
+	root->n = root->children[ASSERTION0_ASSERTIONTYPE_CHILDPOS]->n; // 继承符号元素个数
+	root->width = VarWidth * root->n; // 计算空间
 
 	// 在当前符号表中插入
-	symbolTableStack.top()->enter(root->children[1]->token.code, offsetStack.top(), root->dataType, root->symbolType);
+	this->symbolTableStack.top()->enter(root->children[ASSERTION0_ID_CHILDPOS]->token.code, offsetStack.top(), root->dataType, root->symbolType);
 	
+	// 若为数组类型
 	if (root->symbolType == SymbolTableItem::S_ARRAY) {
-		root->arrayShpae = root->children[2]->arrayShpae;
-		symbolTableStack.top()->setIdArrayShape(root->children[1]->token.code, root->arrayShpae);
+		root->arrayShpae = root->children[ASSERTION0_ASSERTIONTYPE_CHILDPOS]->arrayShpae; // 继承arrayShape
+		symbolTableStack.top()->setIdArrayShape(root->children[ASSERTION0_ID_CHILDPOS]->token.code, root->arrayShpae); // 更新符号表中该id的arrayShape
 	}
 
 	// 跟新offsetStack
@@ -294,19 +319,20 @@ void SemanticAnalyser::ASSERTION0(SyntaxTreeNode* root) {
 }
 
 /*
-*
 * ASSERTION函数
+* 翻译：<ASSERTION>::==<FUNCASSERTION><SENBLOCK>
 */
 void SemanticAnalyser::ASSERTION1(SyntaxTreeNode* root) {
-	// 更新root节点内容
-	root->dataType = root->children[0]->dataType;
-	root->symbolType = root->children[0]->symbolType;
-	root->n = root->children[0]->n;
-	root->width = root->children[0]->width;
+	// 更新root节点内容，继承ASSERTION1_FUNCASSERTION_CHILDPOS节点
+	root->dataType = root->children[ASSERTION1_FUNCASSERTION_CHILDPOS]->dataType;
+	root->symbolType = root->children[ASSERTION1_FUNCASSERTION_CHILDPOS]->symbolType;
+	root->n = root->children[ASSERTION1_FUNCASSERTION_CHILDPOS]->n;
+	root->width = root->children[ASSERTION1_FUNCASSERTION_CHILDPOS]->width;
 
-	//
+	// 取符号表栈栈顶
 	SymbolTable* stp = symbolTableStack.top();
 	symbolTableStack.pop();
+
 	stp->width = stp->table.empty() ? 0 : offsetStack.top() - stp->table[0].offset;
 	offsetStack.pop();
 }
@@ -316,11 +342,15 @@ void SemanticAnalyser::ASSERTIONTYPE0(SyntaxTreeNode* root) {
 	root->n = 1;
 }
 
+/*
+* ASSERTIONTYPE1
+* 翻译：<ASSERTIONTYPE>::=<ARRAYASSERTION>
+*/
 void SemanticAnalyser::ASSERTIONTYPE1(SyntaxTreeNode* root) {
-	root->symbolType = SymbolTableItem::S_ARRAY;
-	root->n = root->children[0]->n;
-	root->arrayShpae = root->children[0]->arrayShpae;
-	reverse(root->arrayShpae.begin(), root->arrayShpae.end());
+	root->symbolType = SymbolTableItem::S_ARRAY; // 将当前节点类型设置为ARRAY
+	root->n = root->children[0]->n; // 继承n（数组元素）
+	root->arrayShpae = root->children[0]->arrayShpae; // 继承arrayShape
+	reverse(root->arrayShpae.begin(), root->arrayShpae.end()); // 倒序
 }
 
 /*
@@ -378,17 +408,25 @@ void SemanticAnalyser::FUNCASSERTION1(SyntaxTreeNode* root) {
 	this->FUNCASSERTION_UpdateStack(root);
 }
 
+/*
+* Function Name:        ARRAYASSERTION0
+* Function Description: 翻译 <ARRAYASSERTION>::='LS''NUM''RS'
+*/
 void SemanticAnalyser::ARRAYASSERTION0(SyntaxTreeNode* root) {
 	root->symbolType = SymbolTableItem::S_ARRAY;
 	root->n = root->children[1]->token.code;
 	root->arrayShpae.push_back(root->children[1]->token.code);
 }
 
+/*
+* Function Name:        ARRAYASSERTION1
+* Function Description: 翻译 <ARRAYASSERTION>::='LS''NUM''RS'<ARRAYASSERTION>
+*/
 void SemanticAnalyser::ARRAYASSERTION1(SyntaxTreeNode* root) {
-	root->symbolType = SymbolTableItem::S_ARRAY;
-	root->n = root->children[1]->token.code * root->children[3]->n;
-	root->arrayShpae = root->children[3]->arrayShpae;
-	root->arrayShpae.push_back(root->children[1]->token.code);
+	root->symbolType = SymbolTableItem::S_ARRAY; // root声明为数组类型
+	root->n = root->children[ARRAYASSERTION1_NUM_CHILDPOS]->token.code * root->children[ARRAYASSERTION1_ARRAYASSERTION_CHILDPOS]->n; // 将当前维度与前面规约的ARRAYASSERTION相乘，得到n
+	root->arrayShpae = root->children[ARRAYASSERTION1_ARRAYASSERTION_CHILDPOS]->arrayShpae; // 当前的arrayShape赋值为前面规约的ARRAYASSERTION的arrayShape
+	root->arrayShpae.push_back(root->children[ARRAYASSERTION1_NUM_CHILDPOS]->token.code); // 在arrayShape中加入当前的维度，注意此时维度为逆序
 }
 
 /*
@@ -454,14 +492,21 @@ void SemanticAnalyser::FORMALPARAMLIST1(SyntaxTreeNode* root) {
 	offsetStack.top() += root->width;
 }
 
+//
+/*
+* Function Name:        SENBLOCK
+* Function Description: 翻译 <SENBLOCK>::='LB'<INNERASSERTION><SENSEQ>'RB'
+*/
 void SemanticAnalyser::SENBLOCK() {
 
 }
 
+// <INNERASSERTION>::=<INNERVARIDEF>'DEL'<INNERASSERTION>
 void SemanticAnalyser::INNERASSERTION0() {
 
 }
 
+// <INNERASSERTION>::='epsilon'
 void SemanticAnalyser::INNERASSERTION1() {
 
 }
@@ -533,35 +578,28 @@ void SemanticAnalyser::SENTENCE3() {
 
 }
 
-void SemanticAnalyser::ASSIGNMENT0(SyntaxTreeNode* root, map<int, string>& nameTable) {
+void SemanticAnalyser::ASSIGNMENT0(SyntaxTreeNode* root, map<int, string>& varTable) {
 	string p = lookup(root->children[0]->token.code);
-	if (p == "")
-	{
-		//cerr << "ERROR: " << root->children[0]->token.code << "is undefineded\n";
-		//exit(-1);
-		throw string("ERROR: 语义分析器错误:") + nameTable[root->children[0]->token.code] + string("未定义\n");
+	if (p == "") {
+		cerr << "ERROR: 语义分析器错误:" << varTable[root->children[0]->token.code] << "未定义" << endl;
+		exit(ERROR_SEMANTIC_ANALYSE_SYMBOLTABLE_NOTDEFINE);
 	}
-	else
-	{
+	else {
 		emit(":=", root->children[2]->place, "", p);
 		root->place = newtemp();
 		emit(":=", root->children[2]->place, "", root->place);
 	}
 }
 
-void SemanticAnalyser::ASSIGNMENT1(SyntaxTreeNode* root, map<int, string>& nameTable) {
-	if (root->children[0]->arrayShpae.size() != 1)
-	{
-		//cerr << "ERROR: 数组索引不完整\n";
-		//exit(-1);
-		throw string("ERROR: 语义分析器错误:遇到不完整的数组索引\n");
+void SemanticAnalyser::ASSIGNMENT1(SyntaxTreeNode* root, map<int, string>& varTable) {
+	if (root->children[0]->arrayShpae.size() != 1) {
+		cerr << "ERROR: 语义分析器错误:遇到不完整的数组索引" << endl;
+		exit(ERROR_SEMANTIC_ANALYSE_SYMBOLTABLE_NOTCOMPLETEINDEX);
 	}
 	string p = lookup(root->children[0]->token.code);
-	if (p == "")
-	{
-		//cerr << "ERROR: " << root->children[0]->token.code << "is undefineded\n";
-		//exit(-1);
-		throw string("ERROR: 语义分析器错误:") + nameTable[root->children[0]->token.code] + string("未定义\n");
+	if (p == "") {
+		cerr << "ERROR: 语义分析器错误:" << varTable[root->children[0]->token.code] << "未定义" << endl;
+		exit(ERROR_SEMANTIC_ANALYSE_SYMBOLTABLE_NOTDEFINE);
 	}
 	else
 	{
@@ -571,14 +609,22 @@ void SemanticAnalyser::ASSIGNMENT1(SyntaxTreeNode* root, map<int, string>& nameT
 	}
 }
 
+/*
+* Function Name:        RETURNSEN0
+* Function Description: 翻译 <RETURNSEN>::='RETURN'<EXPRESSION>
+*/
 void SemanticAnalyser::RETURNSEN0(SyntaxTreeNode* root) {
-	emit(":=", root->children[1]->place, "", "$v0");
-	emit("ret", "", "", "");
+	emit(":=", root->children[RETURNSEN0_EXPRESSION_CHILDPOS]->place, "", "$v0"); // 将返回值保存在$v0寄存器中
+	emit("ret", "", "", ""); // 返回
 }
 
+/*
+* Function Name:        RETURNSEN1
+* Function Description: 翻译 <RETURNSEN>::='RETURN'
+*/
 void SemanticAnalyser::RETURNSEN1() {
-	emit(":=", to_string(0), "", "$v0");
-	emit("ret", "", "", "");
+	emit(":=", to_string(0), "", "$v0"); // 将返回值保存在$v0寄存器中
+	emit("ret", "", "", ""); // 返回
 }
 
 void SemanticAnalyser::WHILESEN(SyntaxTreeNode* root) {
@@ -839,8 +885,8 @@ void SemanticAnalyser::FACTOR2(SyntaxTreeNode* root, map<int, string>& varTable)
 	string t = lookup(root->children[FACTOR2_VAR_CHILDPOS]->token.code); // 查找赋值变量
 	if (t == "") {
 		// 符号表不存在该变量
-		cerr << "ERROR: 语义分析器中" << varTable[root->children[FACTOR2_VAR_CHILDPOS]->token.code] << "没有定义!" << endl;
-		exit(ERROR_SEMANTIC_ANALYSE_SYMBOLTABLE);
+		cerr << "ERROR: 语义分析器错误:" << varTable[root->children[0]->token.code] << "未定义" << endl;
+		exit(ERROR_SEMANTIC_ANALYSE_SYMBOLTABLE_NOTDEFINE);
 	}
 	else {
 		root->place = t; // 变量名赋值
@@ -855,15 +901,14 @@ void SemanticAnalyser::FACTOR2(SyntaxTreeNode* root, map<int, string>& varTable)
 void SemanticAnalyser::FACTOR3(SyntaxTreeNode* root, map<int, string>& varTable) {
 	if (root->children[FACTOR3_ARRAY_CHILDPOS]->arrayShpae.size() != 1) {
 		cerr << "ERROR: 语义分析器：数组索引不完整" << endl;
-		exit(ERROR_SEMANTIC_ANALYSE);
+		exit(ERROR_SEMANTIC_ANALYSE_SYMBOLTABLE_NOTCOMPLETEINDEX);
 	}
 
 	string t = lookup(root->children[FACTOR3_ARRAY_CHILDPOS]->token.code); // 查找赋值变量
-	if (t == "")
-	{
+	if (t == "") {
 		// 符号表不存在该变量
-		cerr << "ERROR: 语义分析器中" << varTable[root->children[FACTOR3_ARRAY_CHILDPOS]->token.code] << "没有定义!" << endl;
-		exit(ERROR_SEMANTIC_ANALYSE_SYMBOLTABLE);
+		cerr << "ERROR: 语义分析器错误:" << varTable[root->children[FACTOR3_ARRAY_CHILDPOS]->token.code] << "未定义" << endl;
+		exit(ERROR_SEMANTIC_ANALYSE_SYMBOLTABLE_NOTDEFINE);
 	}
 	else {
 		root->place = newtemp(); // 定义新变量名
@@ -876,73 +921,47 @@ void SemanticAnalyser::FACTOR3(SyntaxTreeNode* root, map<int, string>& varTable)
 * Function Description: 翻译 <FACTOR>::='ID'<CALL>
 *                       函数内部中的函数调用赋值语句
 */
-void SemanticAnalyser::FACTOR4(SyntaxTreeNode* root, map<int, string>& nameTable) {
-	SymbolTableItem* f = find(root->children[0]->token.code);
-	if (f == NULL)
-	{
-		throw string("ERROR: 语义分析器错误:") + nameTable[root->children[0]->token.code] + string("未定义\n");
+void SemanticAnalyser::FACTOR4(SyntaxTreeNode* root, map<int, string>& varTable) {
+	SymbolTableItem* f = this->find(root->children[FACTOR4_FUNCID_CHILDPOS]->token.code); // 查找函数名'ID'
+
+	if (f == NULL) { // 未找到
+		cerr << "ERROR: 语义分析器错误: " << varTable[root->children[FACTOR4_FUNCID_CHILDPOS]->token.code] << "未定义" << endl;
+		exit(ERROR_SEMANTIC_ANALYSE_SYMBOLTABLE_NOTDEFINE);
 	}
-	if (f->arrayShape[0] != root->children[1]->params.size())
-	{
-		//cerr << "ERROR: 调用过程 " << f->id << " 需要实参: " << f->arrayShpae[0] << " 个, 实际给出: " << root->children[1]->params.size() << " 个\n";
-		throw string("ERROR: 语义分析器错误:调用过程 ") + nameTable[f->id] + string(" 需要实参: ") + to_string(f->arrayShape[0]) + string(" 个, 实际给出: ") + to_string(root->children[1]->params.size()) + string("个\n");
+	if (f->arrayShape[0] != root->children[FACTOR4_ACTUALPARALIST_CHILDPOS]->params.size()) { // 参数个数不对
+		cerr << "ERROR: 语义分析器错误: 调用过程 " << varTable[f->id] << " 需要实参: " << f->arrayShape[0] << " 个, 实际给出: " << root->children[FACTOR4_ACTUALPARALIST_CHILDPOS]->params.size() << " 个" << endl;
+		exit(ERROR_SEMANTIC_ANALYSE_FUNCPARA);
 	}
 
-	emit(":=", "$ra", "", "[$sp]");
-	emit("+", "$sp", to_string(4), "$sp");
-	emit(":=", "$t0", "", "[$sp]");
-	emit("+", "$sp", to_string(4), "$sp");
-	emit(":=", "$t1", "", "[$sp]");
-	emit("+", "$sp", to_string(4), "$sp");
-	emit(":=", "$t2", "", "[$sp]");
-	emit("+", "$sp", to_string(4), "$sp");
-	emit(":=", "$t3", "", "[$sp]");
-	emit("+", "$sp", to_string(4), "$sp");
-	emit(":=", "$t4", "", "[$sp]");
-	emit("+", "$sp", to_string(4), "$sp");
-	emit(":=", "$t5", "", "[$sp]");
-	emit("+", "$sp", to_string(4), "$sp");
-	emit(":=", "$t6", "", "[$sp]");
-	emit("+", "$sp", to_string(4), "$sp");
-	emit(":=", "$t7", "", "[$sp]");
-	emit("+", "$sp", to_string(4), "$sp");
-
-	//string t = newtemp();
-	emit(":=", "$sp", "", "$s0");
-	emit(":=", "$fp", "", "[$sp]");
-	emit("+", "$sp", to_string(4), "$sp");
-	emit(":=", "$s0", "", "$fp");
-
-	for (auto i = 0; i < root->children[1]->params.size(); i++)
-	{
-		emit(":=", root->children[1]->params[i], "", "[$sp]");
-		emit("+", "$sp", to_string(4), "$sp");
+	/*--- 保存现场 ---*/
+	// 保存CALL_SAVE_REGS寄存器
+	for (int i = 0; i < CallSaveRegsNum; i++) {
+		this->saveRegInSp(CALL_SAVE_REGS[i]); 
 	}
+	// $sp保存在$fp中，保存$fp寄存器
+	this->emit(":=", "$sp", "", "$s0");
+	this->saveRegInSp("$fp");
+	this->emit(":=", "$s0", "", "$fp");
+	// 保存实参
+	for (int i = 0; i < root->children[FACTOR4_ACTUALPARALIST_CHILDPOS]->params.size(); i++) {
+		this->saveRegInSp(root->children[FACTOR4_ACTUALPARALIST_CHILDPOS]->params[i]);
+	}
+
+	// 函数跳转
 	emit("jal", "", "", to_string(f->offset));
-	emit(":=", "$fp", "", "$sp");
-	emit(":=", "[$sp]", "", "$fp");
 
-	emit("-", "$sp", to_string(4), "$sp");
-	emit(":=", "[$sp]", "", "$t7");
-	emit("-", "$sp", to_string(4), "$sp");
-	emit(":=", "[$sp]", "", "$t6");
-	emit("-", "$sp", to_string(4), "$sp");
-	emit(":=", "[$sp]", "", "$t5");
-	emit("-", "$sp", to_string(4), "$sp");
-	emit(":=", "[$sp]", "", "$t4");
-	emit("-", "$sp", to_string(4), "$sp");
-	emit(":=", "[$sp]", "", "$t3");
-	emit("-", "$sp", to_string(4), "$sp");
-	emit(":=", "[$sp]", "", "$t2");
-	emit("-", "$sp", to_string(4), "$sp");
-	emit(":=", "[$sp]", "", "$t1");
-	emit("-", "$sp", to_string(4), "$sp");
-	emit(":=", "[$sp]", "", "$t0");
-	emit("-", "$sp", to_string(4), "$sp");
-	emit(":=", "[$sp]", "", "$ra");
+	//函数返回，还原$sp寄存器和$fp寄存器
+	this->emit(":=", "$fp", "", "$sp");
+	this->emit(":=", "[$sp]", "", "$fp");
 
+	// 还原CALL_SAVE_REGS寄存器
+	for (int i = CallSaveRegsNum - 1; i >= 0; i--) {
+		this->loadRegFromSp(CALL_SAVE_REGS[i]);
+	}
+
+	// 为该节点生成变量名，保存返回值
 	root->place = newtemp();
-	emit(":=", "$v0", "", root->place);
+	this->emit(":=", "$v0", "", root->place);
 }
 
 /*
@@ -954,27 +973,28 @@ void SemanticAnalyser::FACTOR5(SyntaxTreeNode* root) {
 	root->place = root->children[1]->place;
 }
 
+/*
+* Function Name:        FACTOR5
+* Function Description: 翻译 <CALL>::='LP'<ACTUALPARAM>'RP'
+*                       传递参数表
+*/
 void SemanticAnalyser::CALL(SyntaxTreeNode* root) {
 	root->params = root->children[1]->params;
 }
 
-void SemanticAnalyser::ARRAY0(SyntaxTreeNode* root, map<int, string>& nameTable) {
+void SemanticAnalyser::ARRAY0(SyntaxTreeNode* root, map<int, string>& varTable) {
 	SymbolTableItem* e = find(root->children[0]->token.code);
-	if (e == NULL)
-	{
-		//cerr << "ERROR: " << root->children[0]->token.code << " is undefineded\n";
-		//exit(-1);
-		throw string("ERROR: 语义分析器错误:") + nameTable[root->children[0]->token.code] + string(" 未定义\n");
+	if (e == NULL) {
+		cerr << "ERROR: 语义分析器错误: " << varTable[root->children[0]->token.code] << "未定义" << endl;
+		exit(ERROR_SEMANTIC_ANALYSE_SYMBOLTABLE_NOTDEFINE);
 	}
 	root->token = root->children[0]->token;
 	root->symbolType = SymbolTableItem::S_ARRAY;
 	root->arrayShpae = e->arrayShape;
 
-	if (root->arrayShpae.size() == 0)
-	{
-		//cerr << "ERROR: array pos error\n";
-		//exit(-1);
-		throw string("ERROR: 语义分析器错误:数组下标错误");
+	if (root->arrayShpae.size() == 0) {
+		cerr << "ERROR: 语义分析器错误:数组" << varTable[root->children[0]->token.code] << "下标错误" << endl;
+		exit(ERROR_SEMANTIC_ANALYSE_ARRAYSHAPE);
 	}
 	else if (root->arrayShpae.size() == 1)
 	{
@@ -994,17 +1014,15 @@ void SemanticAnalyser::ARRAY0(SyntaxTreeNode* root, map<int, string>& nameTable)
 	}
 }
 
-void SemanticAnalyser::ARRAY1(SyntaxTreeNode* root) {
+void SemanticAnalyser::ARRAY1(SyntaxTreeNode* root, map<int, string>& varTable) {
 	root->token = root->children[0]->token;
 	root->symbolType = SymbolTableItem::S_ARRAY;
 	root->arrayShpae = root->children[0]->arrayShpae;
 	root->arrayShpae.erase(root->arrayShpae.begin());
 
-	if (root->arrayShpae.size() == 0)
-	{
-		//cerr << "ERROR: array pos error\n";
-		//exit(-1);
-		throw string("ERROR: 语义分析器错误:数组下标错误");
+	if (root->arrayShpae.size() == 0) {
+		cerr << "ERROR: 语义分析器错误:数组" << varTable[root->children[0]->token.code] << "下标错误" << endl;
+		exit(ERROR_SEMANTIC_ANALYSE_ARRAYSHAPE);
 	}
 	else if (root->arrayShpae.size() == 1)
 	{
@@ -1027,13 +1045,23 @@ void SemanticAnalyser::ARRAY1(SyntaxTreeNode* root) {
 	}
 }
 
+/*
+* Function Name:        ACTUALPARAM0
+* Function Description: 翻译 <ACTUALPARAM>::=<ACTUALPARAMLIST>
+*                       传递参数表
+*/
 void SemanticAnalyser::ACTUALPARAM0(SyntaxTreeNode* root) {
 	root->params = root->children[0]->params;
 }
 
+/*
+* Function Name:        ACTUALPARAM1
+* Function Description: 翻译 <ACTUALPARAM>::='epsilon'
+*/
 void SemanticAnalyser::ACTUALPARAM1() {
 
 }
+
 
 void SemanticAnalyser::ACTUALPARAMLIST0(SyntaxTreeNode* root) {
 	root->params.push_back(root->children[0]->place);
@@ -1044,7 +1072,7 @@ void SemanticAnalyser::ACTUALPARAMLIST1(SyntaxTreeNode* root) {
 	root->params.push_back(root->children[0]->place);
 }
 
-void SemanticAnalyser::analyse(string token, SyntaxTreeNode* root, map<int, string> nameTable) {
+void SemanticAnalyser::analyse(string token, SyntaxTreeNode* root, map<int, string> varTable) {
 	if (token == ProgramToken) {
 		this->Program();
 	}
@@ -1130,10 +1158,10 @@ void SemanticAnalyser::analyse(string token, SyntaxTreeNode* root, map<int, stri
 		this->SENTENCE3();
 	}
 	else if (token == ASSIGNMENTToken0) {
-		this->ASSIGNMENT0(root, nameTable);
+		this->ASSIGNMENT0(root, varTable);
 	}
 	else if (token == ASSIGNMENTToken1) {
-		this->ASSIGNMENT1(root, nameTable);
+		this->ASSIGNMENT1(root, varTable);
 	}
 	else if (token == RETURNSENToken0) {
 		this->RETURNSEN0(root);
@@ -1205,13 +1233,13 @@ void SemanticAnalyser::analyse(string token, SyntaxTreeNode* root, map<int, stri
 		this->FACTOR1(root);
 	}
 	else if (token == FACTORToken2) {
-		this->FACTOR2(root, nameTable);
+		this->FACTOR2(root, varTable);
 	}
 	else if (token == FACTORToken3) {
-		this->FACTOR3(root, nameTable);
+		this->FACTOR3(root, varTable);
 	}
 	else if (token == FACTORToken4) {
-		this->FACTOR4(root, nameTable);
+		this->FACTOR4(root, varTable);
 	}
 	else if (token == FACTORToken5) {
 		this->FACTOR5(root);
@@ -1220,10 +1248,10 @@ void SemanticAnalyser::analyse(string token, SyntaxTreeNode* root, map<int, stri
 		this->CALL(root);
 	}
 	else if (token == ARRAYToken0) {
-		this->ARRAY0(root, nameTable);
+		this->ARRAY0(root, varTable);
 	}
 	else if (token == ARRAYToken1) {
-		this->ARRAY1(root);
+		this->ARRAY1(root, varTable);
 	}
 	else if (token == ACTUALPARAMToken0) {
 		this->ACTUALPARAM0(root);

@@ -81,7 +81,6 @@ public:
 
 	/*=== Functions ===*/
 private:
-	bool is_num(const string& str);
 	bool judgeDAGNodeIsNum(const int& no, const vector<DAGItem>& DAG);
 
 	int operateBopC(const string& op, const int& Bno, const int& Cno, const vector<DAGItem>& DAG);

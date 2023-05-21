@@ -60,7 +60,7 @@ bool LR1Item::operator< (const LR1Item& item) const {
 		return production.second.size() < item.production.second.size();
 	}
 
-	for (int i = 0; i < production.second.size(); i++) {
+	for (unsigned int i = 0; i < production.second.size(); i++) {
 		if (production.second[i] != item.production.second[i]) {
 			return production.second[i] < item.production.second[i];
 		}
@@ -68,7 +68,7 @@ bool LR1Item::operator< (const LR1Item& item) const {
 
 	vector<string> a(forwardSearchStrSet.begin(), forwardSearchStrSet.end());
 	vector<string> b(item.forwardSearchStrSet.begin(), item.forwardSearchStrSet.end());
-	for (int i = 0; i < a.size(); i++) {
+	for (unsigned int i = 0; i < a.size(); i++) {
 		if (a[i] != b[i]) {
 			return a[i] < b[i];
 		}
@@ -155,7 +155,7 @@ void SyntaxAnalyser::readGrammar() {
 		getline(inFile, lineBuffer);
 
 		// 遍历一行
-		for (auto i = 0; i < lineBuffer.size(); i++) {
+		for (unsigned int i = 0; i < lineBuffer.size(); i++) {
 			string v;
 			switch (lineBuffer[i]) {
 				case G_VNSTART:
@@ -209,7 +209,7 @@ void SyntaxAnalyser::readGrammar() {
 	// 验证
 	if (VN.size() != vnProductionRightsMap.size()) {
 		cerr << "ERROR: 文法的产生式与非终结符数目不对应" << endl;
-		exit(ERROR_SYNTAX_ANALYSE);
+		exit(ERROR_SYNTAX_ANALYSE_GRAMMAR_PRODUCTION_VN_MATCH);
 	}
 }
 
@@ -224,16 +224,16 @@ void SyntaxAnalyser::generateFIRST() {
 	while (isChange) {
 		isChange = false;
 		for (auto i = vnProductionRightsMap.begin(); i != vnProductionRightsMap.end(); i++) {
-			vn LVn = i->first; // 取产生是左边的非终结符
+			vn LVn = i->first; // 取产生式左边的非终结符
 			if (FIRST.find(LVn) == FIRST.end()) {
 				FIRST[LVn] = {}; // FIRST中不含该VN非终结符，需要初始化
 			}
 			// 遍历该VN非终结符对应的每一个产生式右部
-			for (auto j = 0; j < i->second.size(); j++) {
+			for (unsigned int j = 0; j < i->second.size(); j++) {
 				if (i->second[j].size() > 0) {
 					string firstRV = i->second[j][0]; // 取产生式右部的首个字符
 					// 遍历该字符对应的FIRST集合
-					for (auto k = 0; k < FIRST[firstRV].size(); k++) {
+					for (unsigned int k = 0; k < FIRST[firstRV].size(); k++) {
 						if (count(FIRST[LVn].begin(), FIRST[LVn].end(), FIRST[firstRV][k]) == 0) {
 							FIRST[LVn].push_back(FIRST[firstRV][k]);
 							isChange = true;
@@ -241,8 +241,8 @@ void SyntaxAnalyser::generateFIRST() {
 					}
 				}
 				else {
-					cerr << "ERROR: 文法存在某条产生式右部为空!" << endl;
-					exit(ERROR_SYNTAX_ANALYSE);
+					cerr << "ERROR: 文法存在某条产生式" << LVn << "右部为空!" << endl;
+					exit(ERROR_SYNTAX_ANALYSE_GRAMMAR_LACK_PRODUCTIONRIGHT);
 				}
 			}
 		}
@@ -257,10 +257,8 @@ void SyntaxAnalyser::CLOSURE(LR1ItemSet& I) {
 	// 遍历项目集I
 	// 注意：先将set转化为vector，否则无法遍历到新增的元素
 	vector<LR1Item> tmp_vec(I.ItemSet.begin(), I.ItemSet.end());
-	for (int i = 0; i < tmp_vec.size(); i++) {
-		//for (auto i = I.ItemSet.begin(); i != I.ItemSet.end(); i++) {
-			// 若.后面无字符
-		if (tmp_vec[i].dotPos >= tmp_vec[i].production.second.size()) {
+	for (unsigned int i = 0; i < tmp_vec.size(); i++) {
+		if (tmp_vec[i].dotPos >= (int)tmp_vec[i].production.second.size()) {
 			continue;
 		}
 
@@ -268,7 +266,7 @@ void SyntaxAnalyser::CLOSURE(LR1ItemSet& I) {
 		// 若.后面对应的是非终结符，将该非终结符的所有产生式加入I
 		if (VN.count(v)) {
 			// 遍历v的每一条产生式
-			for (int j = 0; j < vnProductionRightsMap[v].size(); j++) {
+			for (unsigned int j = 0; j < vnProductionRightsMap[v].size(); j++) {
 				LR1Item item(pair<vn, ProductionRight>(v, vnProductionRightsMap[v][j])); // 根据该产生式生成一个LR1项目
 				// 产生向前搜索串
 				if (tmp_vec[i].dotPos + 1 == tmp_vec[i].production.second.size()) {
@@ -280,39 +278,29 @@ void SyntaxAnalyser::CLOSURE(LR1ItemSet& I) {
 				else {
 					// 将FIRST[下一个字符]插入到item的向前搜索串中
 					string nextV = tmp_vec[i].production.second[tmp_vec[i].dotPos + 1];
-					for (int k = 0; k < FIRST[nextV].size(); k++) {
+					for (unsigned int k = 0; k < FIRST[nextV].size(); k++) {
 						item.forwardSearchStrSet.insert(FIRST[nextV][k]);
 					}
 				}
 				//去重
 				bool flag = false;
-				for (int k = 0; k < tmp_vec.size(); k++) {
+				for (unsigned int k = 0; k < tmp_vec.size(); k++) {
 					if (tmp_vec[k].production == item.production && tmp_vec[k].dotPos == item.dotPos) {
 						flag = true;
 						set<ForwardSearchStr> t;
 						set_union(tmp_vec[k].forwardSearchStrSet.begin(), tmp_vec[k].forwardSearchStrSet.end(), item.forwardSearchStrSet.begin(), item.forwardSearchStrSet.end(), inserter(t, t.begin()));
 						tmp_vec[k].forwardSearchStrSet = t;
-						/*
-						for (auto m = I.ItemSet.begin(); m != I.ItemSet.end(); m++) {
-							if (m->production == item.production && m->dotPos == item.dotPos) {
-								I.ItemSet.erase(m);
-								break;
-							}
-						}
-						*/
-						// I.ItemSet.insert(item);
 						break;
 					}
 				}
 				if (!flag) {
-					// I.ItemSet.insert(item);
 					tmp_vec.push_back(item);
 				}
 			}
 		}
 	}
 	I.ItemSet.clear();
-	for (int i = 0; i < tmp_vec.size(); i++) {
+	for (unsigned int i = 0; i < tmp_vec.size(); i++) {
 		I.ItemSet.insert(tmp_vec[i]);
 	}
 }
@@ -325,7 +313,7 @@ LR1ItemSet SyntaxAnalyser::GO(const LR1ItemSet& I, const string& v) {
 	LR1ItemSet ret;
 	// 遍历I中所有的元素
 	for (auto i = I.ItemSet.begin(); i != I.ItemSet.end(); i++) {
-		if ((*i).dotPos < (*i).production.second.size() && (*i).production.second[(*i).dotPos] == v) {
+		if ((*i).dotPos < (int)(*i).production.second.size() && (*i).production.second[(*i).dotPos] == v) {
 			LR1Item item = (*i);
 			item.dotPos++;
 			ret.ItemSet.insert(item);
@@ -338,7 +326,7 @@ LR1ItemSet SyntaxAnalyser::GO(const LR1ItemSet& I, const string& v) {
 vector<string> SyntaxAnalyser::generateNextV(const LR1ItemSet& I) {
 	vector<string> ret;
 	for (auto i = I.ItemSet.begin(); i != I.ItemSet.end(); i++) {
-		if ((*i).dotPos < (*i).production.second.size()) {
+		if ((*i).dotPos < (int)(*i).production.second.size()) {
 			ret.push_back((*i).production.second[(*i).dotPos]);
 		}
 	}
@@ -360,7 +348,7 @@ void SyntaxAnalyser::show() {
 	for (p = ACTION.begin(); p != ACTION.end(); p++)
 	{
 		cout << p->first << '\t';
-		for (int i = 0; i < p->second.size(); i++)
+		for (unsigned int i = 0; i < p->second.size(); i++)
 		{
 			switch (p->second[i].status)
 			{
@@ -368,7 +356,7 @@ void SyntaxAnalyser::show() {
 				case ActionItem::A_SHIFT:cout << "s" << p->second[i].nextState << "\t"; break;
 				case ActionItem::A_REDUCTION:
 					cout << "r:" << p->second[i].production.first << "->";
-					for (int j = 0; j < p->second[i].production.second.size(); j++)
+					for (unsigned int j = 0; j < p->second[i].production.second.size(); j++)
 					{
 						cout << p->second[i].production.second[j] << ' ';
 					}
@@ -379,7 +367,7 @@ void SyntaxAnalyser::show() {
 			cout << "\t";
 		}
 		cout << '\t';
-		for (int i = 0; i < GOTO[p->first].size(); i++)
+		for (unsigned int i = 0; i < GOTO[p->first].size(); i++)
 			cout << GOTO[p->first][i] << ' ';
 		cout << endl;
 	}
@@ -406,7 +394,7 @@ void SyntaxAnalyser::generateDFA() {
 		vector<string> nextV = generateNextV(itemSetRec[now]);
 
 		// 遍历所有字符
-		for (int i = 0; i < nextV.size(); i++) {
+		for (unsigned int i = 0; i < nextV.size(); i++) {
 			LR1ItemSet item = GO(itemSetRec[now], nextV[i]);
 			int index = find(itemSetRec.begin(), itemSetRec.end(), item) - itemSetRec.begin();
 			if (index == itemSetRec.size()) {
@@ -422,7 +410,7 @@ void SyntaxAnalyser::generateDFA() {
 }
 
 void SyntaxAnalyser::generateLR1Table() {
-	for (auto i = 0; i < itemSetRec.size(); i++) {
+	for (unsigned int i = 0; i < itemSetRec.size(); i++) {
 		vector<ActionItem> Action(VT.size());
 		vector<int> Goto(VN.size(), -1);
 		set<LR1Item> I = itemSetRec[i].ItemSet;
@@ -482,10 +470,31 @@ void SyntaxAnalyser::generateLR1Table() {
 }
 
 void SyntaxAnalyser::analyse() {
+	time_t begin, end;
+
+	cout << endl << "语法分析:正在读取语法..." << endl;
+	begin = clock();
 	this->readGrammar();
+	end = clock();
+	cout << "读取语法成功，用时" << double(end - begin) / CLOCKS_PER_SEC << "s" << endl;
+
+	cout << endl << "语法分析:正在生成FIRST集合..." << endl;
+	begin = clock();
 	this->generateFIRST();
+	end = clock();
+	cout << "生成FIRST集合成功，用时" << double(end - begin) / CLOCKS_PER_SEC << "s" << endl;
+
+	cout << endl << "语法分析:正在生成DFA..." << endl;
+	begin = clock();
 	this->generateDFA();
-	this->generateLR1Table();
+	end = clock();
+	cout << "生成DFA成功，用时" << double(end - begin) / CLOCKS_PER_SEC << "s" << endl;
+
+	cout << endl << "语法分析:正在生成LR1分析表..." << endl;
+	begin = clock();
+	this->generateLR1Table(); 
+	end = clock();
+	cout << "生成LR1分析表成功，用时" << double(end - begin) / CLOCKS_PER_SEC << "s" << endl;
 }
 
 int SyntaxAnalyser::getVTPos(const string& s) {

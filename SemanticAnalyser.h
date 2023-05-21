@@ -139,10 +139,6 @@ public:
 	int quad;
 	int trueList;
 	int falseList;
-
-	int x;
-	int y;
-
 };
 
 /*========= 语法树节点 =========*/
@@ -157,6 +153,10 @@ class SemanticAnalyser {
 	static const int VarNum = 1;
 	static const int VarWidth = 4;
 	static const int VarShape = 1;
+	
+	static const int CallSaveRegsNum = 9;
+
+	static const int ASSERTION1_FUNCASSERTION_CHILDPOS = 0;
 
 	static const int FUNCASSERTION_FUNCID_CHILDPOS = 1;
 	static const int FUNCASSERTION_OFFSET_CHILDPOS = 2;
@@ -174,6 +174,17 @@ class SemanticAnalyser {
 	static const int FACTOR1_EXPRESSION_CHILDPOS = 1;
 	static const int FACTOR2_VAR_CHILDPOS = 0;
 	static const int FACTOR3_ARRAY_CHILDPOS = 0;
+	static const int FACTOR4_FUNCID_CHILDPOS = 0;
+	static const int FACTOR4_ACTUALPARALIST_CHILDPOS = 1;
+
+	static const int RETURNSEN0_EXPRESSION_CHILDPOS = 1;
+
+	static const int ASSERTION0_ID_CHILDPOS = 1;
+	static const int ASSERTION0_ASSERTIONTYPE_CHILDPOS = 2;
+
+	static const int ARRAYASSERTION1_NUM_CHILDPOS = 1;
+	static const int ARRAYASSERTION1_ARRAYASSERTION_CHILDPOS = 3;
+	
 
 	const string ProgramToken = "<PROGRAM>::=<M><ASSERTIONS>";
 	const string MToken = "<M>::='epsilon'";
@@ -240,6 +251,18 @@ class SemanticAnalyser {
 	const string ACTUALPARAMLISTToken0 = "<ACTUALPARAMLIST>::=<EXPRESSION>";
 	const string ACTUALPARAMLISTToken1 = "<ACTUALPARAMLIST>::=<EXPRESSION>'SEP'<ACTUALPARAMLIST>";
 
+	const string CALL_SAVE_REGS[CallSaveRegsNum] = {
+		"$ra",
+		"$t0",
+		"$t1",
+		"$t2",
+		"$t3",
+		"$t4",
+		"$t5",
+		"$t6",
+		"$t7"
+	};
+
 	/*=== Functions ===*/
 private:
 	string newtemp();
@@ -249,6 +272,8 @@ private:
 	void emit(string op, string arg1, string arg2, string restult);
 
 	// 公共函数
+	void saveRegInSp(const string& r);
+	void loadRegFromSp(const string& r);
 	void FUNCASSERTION_UpdateStack(const SyntaxTreeNode* root);
 
 	void Program();
@@ -310,7 +335,7 @@ private:
 	void FACTOR5(SyntaxTreeNode* root);
 	void CALL(SyntaxTreeNode* root);
 	void ARRAY0(SyntaxTreeNode* root, map<int, string>& nameTable);
-	void ARRAY1(SyntaxTreeNode* root);
+	void ARRAY1(SyntaxTreeNode* root, map<int, string>& varTable);
 	void ACTUALPARAM0(SyntaxTreeNode* root);
 	void ACTUALPARAM1();
 	void ACTUALPARAMLIST0(SyntaxTreeNode* root);
@@ -321,7 +346,7 @@ public:
 	SemanticAnalyser();
 	~SemanticAnalyser();
 
-	void analyse(string token, SyntaxTreeNode* root, map<int, string> nameTable);
+	void analyse(string token, SyntaxTreeNode* root, map<int, string> varTable);
 
 	/*=== Members ===*/
 private:

@@ -40,7 +40,6 @@ class LR1ItemSet {
 	/*=== Members ===*/
 public:
 	set<LR1Item> ItemSet;
-	map<string, int> next;
 
 	/*=== Functions ===*/
 public:
@@ -89,7 +88,7 @@ public:
 /*========= Óï·¨·ÖÎöÆ÷SyntaxAnalyser =========*/
 class SyntaxAnalyser {
 	/*=== Consts ===*/
-	const string G_FileName = "grammar.txt";
+	const string G_FileName = "./input/grammar.txt";
 	const string G_SINIT = "@";
 	static const char G_VNSTART = '<';
 	static const char G_VNEND = '>';

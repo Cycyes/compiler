@@ -1,0 +1,300 @@
++ $sp 4 $sp
++ $sp 4 $sp
++ $sp 4 $sp
+:= 0  V20
+:= V20  V12
++ $sp 4 $sp
+:= V20  V24
++ $sp 4 $sp
++ V4 V0 V28
++ $sp 4 $sp
+j> V8 V28 13
+:= 0  V32
+j   14
+:= 1  V32
+jnz V32  16
+j   29
++ $sp 4 $sp
+* V4 V0 V36
++ $sp 4 $sp
+:= 1  V40
++ $sp 4 $sp
++ V36 V40 V44
++ $sp 4 $sp
++ V8 V44 V48
+:= V48  V16
++ $sp 4 $sp
+:= V48  V52
+- $sp 20 $sp
+j   33
+:= V8  V16
++ $sp 4 $sp
+:= V8  V36
+- $sp 4 $sp
++ $sp 4 $sp
+:= 100  V36
++ $sp 4 $sp
+j<= V12 V36 39
+:= 0  V40
+j   40
+:= 1  V40
+jnz V40  42
+j   53
++ $sp 4 $sp
+:= 2  V44
++ $sp 4 $sp
+* V16 V44 V48
++ $sp 4 $sp
++ V12 V48 V52
+:= V52  V12
++ $sp 4 $sp
+:= V52  V56
+- $sp 16 $sp
+j   33
+:= V12  $v0
+ret   
++ $sp 4 $sp
+:= 2  V4
++ $sp 4 $sp
++ V0 V4 V8
+:= V8  V0
++ $sp 4 $sp
+:= V8  V12
++ $sp 4 $sp
+:= 2  V16
++ $sp 4 $sp
+* V0 V16 V20
+:= V20  $v0
+ret   
++ $sp 4 $sp
+:= 0  V0
++ $sp 4 $sp
+:= 2  V4
++ $sp 4 $sp
+* V4 V0 V8
++ $sp 4 $sp
+:= 0  V12
++ $sp 4 $sp
++ V8 V12 V16
++ $sp 4 $sp
+:= 3  V20
+[]= V20 V16 G0
++ $sp 4 $sp
+:= V20  V24
++ $sp 4 $sp
+:= 0  V28
++ $sp 4 $sp
+:= 2  V32
++ $sp 4 $sp
+* V32 V28 V36
++ $sp 4 $sp
+:= 1  V40
++ $sp 4 $sp
++ V36 V40 V44
++ $sp 4 $sp
+:= 0  V48
++ $sp 4 $sp
+:= 2  V52
++ $sp 4 $sp
+* V52 V48 V56
++ $sp 4 $sp
+:= 0  V60
++ $sp 4 $sp
++ V56 V60 V64
++ $sp 4 $sp
+=[] G0 V64 V68
++ $sp 4 $sp
+:= 1  V72
++ $sp 4 $sp
++ V68 V72 V76
+[]= V76 V44 G0
++ $sp 4 $sp
+:= V76  V80
++ $sp 4 $sp
+:= 1  V84
++ $sp 4 $sp
+:= 2  V88
++ $sp 4 $sp
+* V88 V84 V92
++ $sp 4 $sp
+:= 0  V96
++ $sp 4 $sp
++ V92 V96 V100
++ $sp 4 $sp
+:= 0  V104
++ $sp 4 $sp
+:= 2  V108
++ $sp 4 $sp
+* V108 V104 V112
++ $sp 4 $sp
+:= 0  V116
++ $sp 4 $sp
++ V112 V116 V120
++ $sp 4 $sp
+=[] G0 V120 V124
++ $sp 4 $sp
+:= 0  V128
++ $sp 4 $sp
+:= 2  V132
++ $sp 4 $sp
+* V132 V128 V136
++ $sp 4 $sp
+:= 1  V140
++ $sp 4 $sp
++ V136 V140 V144
++ $sp 4 $sp
+=[] G0 V144 V148
++ $sp 4 $sp
++ V124 V148 V152
+[]= V152 V100 G0
++ $sp 4 $sp
+:= V152  V156
++ $sp 4 $sp
+:= 1  V160
++ $sp 4 $sp
+:= 2  V164
++ $sp 4 $sp
+* V164 V160 V168
++ $sp 4 $sp
+:= 1  V172
++ $sp 4 $sp
++ V168 V172 V176
++ $sp 4 $sp
+:= 0  V180
++ $sp 4 $sp
+:= 2  V184
++ $sp 4 $sp
+* V184 V180 V188
++ $sp 4 $sp
+:= 0  V192
++ $sp 4 $sp
++ V188 V192 V196
++ $sp 4 $sp
+=[] G0 V196 V200
++ $sp 4 $sp
+:= 0  V204
++ $sp 4 $sp
+:= 2  V208
++ $sp 4 $sp
+* V208 V204 V212
++ $sp 4 $sp
+:= 1  V216
++ $sp 4 $sp
++ V212 V216 V220
++ $sp 4 $sp
+=[] G0 V220 V224
++ $sp 4 $sp
+:= 1  V228
++ $sp 4 $sp
+:= 2  V232
++ $sp 4 $sp
+* V232 V228 V236
++ $sp 4 $sp
+:= 0  V240
++ $sp 4 $sp
++ V236 V240 V244
++ $sp 4 $sp
+=[] G0 V244 V248
+:= $ra  [$sp]
++ $sp 4 $sp
+:= $t0  [$sp]
++ $sp 4 $sp
+:= $t1  [$sp]
++ $sp 4 $sp
+:= $t2  [$sp]
++ $sp 4 $sp
+:= $t3  [$sp]
++ $sp 4 $sp
+:= $t4  [$sp]
++ $sp 4 $sp
+:= $t5  [$sp]
++ $sp 4 $sp
+:= $t6  [$sp]
++ $sp 4 $sp
+:= $t7  [$sp]
++ $sp 4 $sp
+:= $sp  $s0
+:= $fp  [$sp]
++ $sp 4 $sp
+:= $s0  $fp
+:= V248  [$sp]
++ $sp 4 $sp
+jal   55
+:= $fp  $sp
+:= [$sp]  $fp
+- $sp 4 $sp
+:= [$sp]  $t7
+- $sp 4 $sp
+:= [$sp]  $t6
+- $sp 4 $sp
+:= [$sp]  $t5
+- $sp 4 $sp
+:= [$sp]  $t4
+- $sp 4 $sp
+:= [$sp]  $t3
+- $sp 4 $sp
+:= [$sp]  $t2
+- $sp 4 $sp
+:= [$sp]  $t1
+- $sp 4 $sp
+:= [$sp]  $t0
+- $sp 4 $sp
+:= [$sp]  $ra
++ $sp 4 $sp
+:= $v0  V252
+:= $ra  [$sp]
++ $sp 4 $sp
+:= $t0  [$sp]
++ $sp 4 $sp
+:= $t1  [$sp]
++ $sp 4 $sp
+:= $t2  [$sp]
++ $sp 4 $sp
+:= $t3  [$sp]
++ $sp 4 $sp
+:= $t4  [$sp]
++ $sp 4 $sp
+:= $t5  [$sp]
++ $sp 4 $sp
+:= $t6  [$sp]
++ $sp 4 $sp
+:= $t7  [$sp]
++ $sp 4 $sp
+:= $sp  $s0
+:= $fp  [$sp]
++ $sp 4 $sp
+:= $s0  $fp
+:= V252  [$sp]
++ $sp 4 $sp
+:= V224  [$sp]
++ $sp 4 $sp
+:= V200  [$sp]
++ $sp 4 $sp
+jal   0
+:= $fp  $sp
+:= [$sp]  $fp
+- $sp 4 $sp
+:= [$sp]  $t7
+- $sp 4 $sp
+:= [$sp]  $t6
+- $sp 4 $sp
+:= [$sp]  $t5
+- $sp 4 $sp
+:= [$sp]  $t4
+- $sp 4 $sp
+:= [$sp]  $t3
+- $sp 4 $sp
+:= [$sp]  $t2
+- $sp 4 $sp
+:= [$sp]  $t1
+- $sp 4 $sp
+:= [$sp]  $t0
+- $sp 4 $sp
+:= [$sp]  $ra
++ $sp 4 $sp
+:= $v0  V256
+[]= V256 V176 G0
++ $sp 4 $sp
+:= V256  V260
+:= 0  $v0
+ret   

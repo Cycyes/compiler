@@ -1,34 +1,5 @@
 #include "IntermediateCodeGenerater.h"
 
-/*============================== 语法树信息 ==============================*/
-
-SyntaxTreeInfo::SyntaxTreeInfo() {
-	maxTreeLevel = 0;
-	leafNum = 0;
-
-	root = NULL;
-}
-
-SyntaxTreeInfo::~SyntaxTreeInfo() {
-
-}
-
-void SyntaxTreeInfo::updateInfo(SyntaxTreeNode* n, const int& l) {
-	// 更新maxTreeLevel
-	if (l > maxTreeLevel) {
-		maxTreeLevel = l;
-	}
-
-	// 更新叶子节点数量
-	if (n->children.size() == 0) {
-		leafNum++;
-	}
-}
-
-/*============================== 语法树信息 ==============================*/
-
-
-
 /*============================== 中间代码生成器 ==============================*/
 
 IntermediateCodeGenerater::IntermediateCodeGenerater(const string& s) {
@@ -53,19 +24,6 @@ string IntermediateCodeGenerater::generateProductionStr(const Production& p) {
 		}
 	}
 	return ret;
-}
-
-void IntermediateCodeGenerater::generateTreeLevel(SyntaxTreeNode* n, const int& l) {
-	
-	// 更新树的信息
-	this->syntaxTreeInfo.updateInfo(n, l);
-
-	n->level = l;
-
-	// 遍历子树
-	for (int i = 0; i < n->children.size(); i++) {
-		generateTreeLevel(n->children[i], l + 1);
-	}
 }
 
 void IntermediateCodeGenerater::analyse(const string& filename) {
@@ -120,8 +78,6 @@ void IntermediateCodeGenerater::analyse(const string& filename) {
 				outfile << "}";
 				outfile.close();
 
-				// 完成分析，生成语法树
-				this->generateTreeLevel(this->syntaxTreeInfo.root, 0);
 				return;
 				break;
 			case ActionItem::A_ERROR:
@@ -130,7 +86,7 @@ void IntermediateCodeGenerater::analyse(const string& filename) {
 					token = epsilonToken;
 				}
 				else {
-					cerr << "ERROR: 中间代码生成器扫描到第" << to_string(lineCnt) << "行的符号" << token.str << "时发生错误" << endl;
+					cerr << "ERROR: 中间代码生成器扫描到第" << to_string(lineCnt) << "行的符号" << nextEpsilonToken.str << "时发生错误" << endl;
 					exit(ERROR_INTERMEDIATE_CODE_GENERATER);
 				}
 				break;
@@ -213,8 +169,6 @@ void IntermediateCodeGenerater::analyse(const string& filename) {
 				reverse(stnp->children.begin(), stnp->children.end());
 				syntaxTreeNodeStack.push(stnp);
 
-				this->syntaxTreeInfo.root = stnp;
-
 				// 调用语义分析器
 				this->semanticAnalyser.analyse(this->generateProductionStr(actionItem.production), stnp, this->lexcalAnalyser.varTable);
 
@@ -232,7 +186,7 @@ void IntermediateCodeGenerater::drawSyntaxTree(const string& s, const string& d)
 	system(cmd.c_str());
 }
 
-void IntermediateCodeGenerater::showIntermediateCode(const string& filename) {
+void IntermediateCodeGenerater::showIntermediateCode(const string& filename, const bool& isOut) {
 	ofstream outfile(filename, ios::out | ios::binary);
 	if (!outfile.is_open()) {
 		cerr << "ERROR: 中间代码文件打开失败!" << endl;
@@ -240,7 +194,9 @@ void IntermediateCodeGenerater::showIntermediateCode(const string& filename) {
 	}
 
 	for (int i = 0; i < this->semanticAnalyser.intermediateCode.size(); i++) {
-		cout << this->semanticAnalyser.intermediateCode[i] << endl;
+		if (isOut) {
+			cout << this->semanticAnalyser.intermediateCode[i] << endl;
+		}
 		outfile << this->semanticAnalyser.intermediateCode[i] << endl;
 	}
 

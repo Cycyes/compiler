@@ -1,143 +1,183 @@
 #include "ObjectCodeGenerater.h"
 
-objectCodeGenerator::objectCodeGenerator(vector<Quaternion> ic, vector<BlockItem> bg, int stack_size)
-{
-	intermediate_code = ic;
-	block_group = bg;
-	stack_buf_size = stack_size * 1024;
-	data_buf_size = stack_size * 1024;
-	temp_buf_size = stack_size * 1024;
+/*============================== MessageTableItem ==============================*/
+
+MessageTableItem::MessageTableItem() {
+
 }
-vector<messageTableItem> objectCodeGenerator::geneMessageTable(int block_no)
-{
-	vector<messageTableItem> message_table;
-	map<string, pair<int, bool>> message_link;
-	for (auto pos = block_group[block_no].end; pos >= block_group[block_no].begin; pos--)
-	{
-		Quaternion TAS = intermediate_code[pos];
-		messageTableItem new_table_item;
-		new_table_item.no = pos;
-		new_table_item.TAS = TAS;
-		if (TAS.arg1[0] == 'G' || TAS.arg1[0] == 'V' || TAS.arg1[0] == 'T')
-		{
-			if (message_link.find(TAS.arg1) == message_link.end())
-			{
-				if (TAS.arg1[0] == 'G' || find(block_group[block_no].waitVar.begin(), block_group[block_no].waitVar.end(), TAS.arg1) != block_group[block_no].waitVar.end())
-				{
-					message_link[TAS.arg1] = pair<int, bool>(INT_MAX, true);
-				}
-				else
-				{
-					message_link[TAS.arg1] = pair<int, bool>(0, false);
+
+MessageTableItem::MessageTableItem(const int& id, const Quaternion& q) {
+	this->id = id;
+	this->q = q;
+}
+
+MessageTableItem::~MessageTableItem() {
+
+}
+
+/*============================== MessageTableItem ==============================*/
+
+
+
+/*============================== ObjectCodeGenerater ==============================*/
+
+ObjectCodeGenerater::ObjectCodeGenerater(const vector<Quaternion> intermediateCode, const vector<BlockItem>& block, const int& stackSize) {
+	this->intermediateCode = intermediateCode;
+	this->block = block;
+	this->stackBufferSize = stackSize * bufferSize;
+	this->dataBufferSize = stackSize * bufferSize;
+	this->tempBufferSize = stackSize * bufferSize;
+
+	RVALUE = {
+		{"$t0", vector<pair<string,int>> {}} ,
+		{"$t1", vector<pair<string,int>> {}},
+		{"$t2", vector<pair<string,int>> {}},
+		{"$t3", vector<pair<string,int>> {}},
+		{"$t4", vector<pair<string,int>> {}},
+		{"$t5", vector<pair<string,int>> {}},
+		{"$t6", vector<pair<string,int>> {}},
+		{"$t7", vector<pair<string,int>> {}}
+	};
+}
+
+ObjectCodeGenerater::~ObjectCodeGenerater() {
+
+}
+
+void ObjectCodeGenerater::emit(string code) {
+	this->objectCode.push_back(code);
+}
+
+void ObjectCodeGenerater::endBlock() {
+	// 遍历AVALUE
+	for (auto i = this->AVALUE.begin(); i != AVALUE.end(); i++) {
+		string V = i->first;
+		// 尚未存入内存的变量
+		if (find(this->AVALUE[V].begin(), this->AVALUE[V].end(), "M") == this->AVALUE[V].end()) {
+			string R;
+			for (int j = 0; j < this->AVALUE[V].size(); j++) {
+				if (this->AVALUE[V][j] != "M") {
+					R = AVALUE[V][j];
+					break;
 				}
 			}
-			new_table_item.arg1_tag = message_link[TAS.arg1];
-			message_link[TAS.arg1] = pair<int, bool>(pos, true);
-		}
-		if (TAS.arg2[0] == 'G' || TAS.arg2[0] == 'V' || TAS.arg2[0] == 'T')
-		{
-			if (message_link.find(TAS.arg2) == message_link.end())
-			{
-				if (TAS.arg2[0] == 'G' || find(block_group[block_no].waitVar.begin(), block_group[block_no].waitVar.end(), TAS.arg2) != block_group[block_no].waitVar.end())
-				{
-					message_link[TAS.arg2] = pair<int, bool>(INT_MAX, true);
-				}
-				else
-				{
-					message_link[TAS.arg2] = pair<int, bool>(0, false);
-				}
+			// sw
+			if (V[0] == 'G') {
+				this->emit("sw " + R + ",data+" + to_string(stoi(V.substr(1))));
 			}
-			new_table_item.arg2_tag = message_link[TAS.arg2];
-			message_link[TAS.arg2] = pair<int, bool>(pos, true);
-		}
-		if (TAS.result[0] == 'G' || TAS.result[0] == 'V' || TAS.result[0] == 'T')
-		{
-			if (message_link.find(TAS.result) == message_link.end())
-			{
-				if (TAS.result[0] == 'G' || find(block_group[block_no].waitVar.begin(), block_group[block_no].waitVar.end(), TAS.result) != block_group[block_no].waitVar.end())
-				{
-					message_link[TAS.result] = pair<int, bool>(INT_MAX, true);
-				}
-				else
-				{
-					message_link[TAS.result] = pair<int, bool>(0, false);
-				}
+			else if (V[0] == 'V') {
+				this->emit("sw " + R + ",stack+" + to_string(4 + stoi(V.substr(1))) + "($fp)");
 			}
-			new_table_item.result_tag = message_link[TAS.result];
-			message_link[TAS.result] = pair<int, bool>(0, false);
+			else if (V[0] == 'T') {
+				this->emit("sw " + R + ",temp+" + to_string(4 * stoi(V.substr(1))));
+			}
+			else {
+				cerr << "ERROR: 目标代码生成器AVALUE出现意外变量名!" << endl;
+				exit(ERROR_OBJECTCODEGENERATER);
+			}
 		}
-		message_table.push_back(new_table_item);
-		messageTableHistory.push_back(new_table_item);
 	}
-	reverse(message_table.begin(), message_table.end());
-	return message_table;
+	AVALUE.clear(); // 清AVALUE
+
+	// 遍历RVALUE
+	for (auto i = this->RVALUE.begin(); i != this->RVALUE.end(); i++) {
+		i->second.clear();
+	}
 }
-void objectCodeGenerator::emit(string code)
-{
-	object_code.push_back(code);
-	new_code.push_back(code);
+
+void ObjectCodeGenerater::updateVALUE(const Tag& tag, const string& R, const string& V, const bool& flag) {
+	if (flag || !tag.second) {
+		// 遍历AVALUE
+		for (int i = 0; i < this->AVALUE[V].size(); i++) {
+			if (this->RVALUE.find(this->AVALUE[V][i]) != this->RVALUE.end()) {
+				string t = this->AVALUE[V][i];
+				for (int j = 0; j < this->RVALUE[t].size(); j++) {
+					if (this->RVALUE[t][j].first == V) {
+						this->RVALUE[t].erase(find(this->RVALUE[t].begin(), this->RVALUE[t].end(), this->RVALUE[t][j]));
+						break;
+					}
+				}
+			}
+		}
+		if (tag.second) {
+			this->AVALUE[V] = vector<string>{ R };
+			this->RVALUE[R].push_back(pair<string, int>(V, tag.first));
+		}
+		else {
+			this->AVALUE.erase(V);
+		}
+	}
+	else {
+		bool is_find = false;
+		for (int i = 0; i < this->RVALUE[R].size(); i++) { // 遍历RVALUE
+			if (this->RVALUE[R][i].first == V) { // 判断是否与reg相等
+				is_find = true;
+				this->RVALUE[R][i].second = tag.first;
+				break;
+			}
+		}
+		if (!is_find) { 
+			this->RVALUE[R].push_back(pair<string, int>(V, tag.first));
+		}
+
+		if (this->AVALUE.find(V) == this->AVALUE.end()) {
+			this->AVALUE[V] = vector<string>{ R }; // arg不存在于AVALUE，新建arg
+		}
+		else {
+			if (find(this->AVALUE[V].begin(), this->AVALUE[V].end(), R) == this->AVALUE[V].end()) {
+				this->AVALUE[V].push_back(R);
+			}
+		}
+	}
 }
-string objectCodeGenerator::getREG(string result)
-{
+
+string ObjectCodeGenerater::getReg(const string& result) {
 	string R;
 	bool has_R = false;
 	//result本身有寄存器
-	if (AVALUE.find(result) != AVALUE.end() && AVALUE[result].size() > 0)
-	{
-		for (auto i = 0; i < AVALUE[result].size(); i++)
-		{
-			if (AVALUE[result][i] != "M")
-			{
+	if (AVALUE.find(result) != AVALUE.end() && AVALUE[result].size() > 0) {
+		for (auto i = 0; i < AVALUE[result].size(); i++) {
+			if (AVALUE[result][i] != "M") {
 				R = AVALUE[result][i];
 				has_R = true;
 				break;
 			}
 		}
 	}
-	if (!has_R)
-	{
-		for (map<string, vector<pair<string, int>>>::iterator iter = RVALUE.begin(); iter != RVALUE.end(); iter++)
-		{
-			if (iter->second.size() == 0)
-			{
+	if (!has_R) {
+		for (map<string, vector<pair<string, int>>>::iterator iter = RVALUE.begin(); iter != RVALUE.end(); iter++) {
+			if (iter->second.size() == 0) {
 				R = iter->first;
 				return R;
 			}
 		}
 		//choose R which will be used in longest time
 		int farthest_R = -1;
-		for (map<string, vector<pair<string, int>>>::iterator iter = RVALUE.begin(); iter != RVALUE.end(); iter++)
-		{
+		for (map<string, vector<pair<string, int>>>::iterator iter = RVALUE.begin(); iter != RVALUE.end(); iter++) {
 			int closest_V = INT_MAX;
-			for (auto i = 0; i < iter->second.size(); i++)
-			{
+			for (auto i = 0; i < iter->second.size(); i++) {
 				if (iter->second[i].second < closest_V)
 					closest_V = iter->second[i].second;
 			}
-			if (closest_V > farthest_R)
-			{
+			if (closest_V > farthest_R) {
 				farthest_R = closest_V;
 				R = iter->first;
 			}
 		}
 	}
-	for (auto i = 0; i < RVALUE[R].size(); i++)
-	{
+	for (auto i = 0; i < RVALUE[R].size(); i++) {
 		string V = RVALUE[R][i].first;
-		if (AVALUE[V].size() == 1 && AVALUE[V][0] == R)
-		{
+		if (AVALUE[V].size() == 1 && AVALUE[V][0] == R) {
 			//save variable V
 			if (V[0] == 'G')
-				emit("sw " + R + "," + DATA + "+" + to_string(stoi(V.substr(1))));
+				this->emit("sw " + R + ",data+" + to_string(stoi(V.substr(1))));
 			else if (V[0] == 'V')
-				emit("sw " + R + "," + STACK + "+" + to_string(4 + stoi(V.substr(1))) + "($fp)");
+				this->emit("sw " + R + ",stack+" + to_string(4 + stoi(V.substr(1))) + "($fp)");
 			else if (V[0] == 'T')
-				emit("sw " + R + "," + TEMP + "+" + to_string(4 * stoi(V.substr(1))));
-			else
-			{
-				//cerr << "ERROR: AVALUE中出现意外的变量名:" << V << endl;
-				//exit(-1);
-				throw string("ERROR: 目标代码生成器错误:AVALUE中出现意外的变量名:") + V + string("\n");
+				this->emit("sw " + R + ",temp+" + to_string(4 * stoi(V.substr(1))));
+			else {
+				cerr << "ERROR: AVALUE中出现意外的变量名:" << V << endl;
+				exit(ERROR_OBJECTCODEGENERATER);
 			}
 		}
 		//delete R from AVALUE
@@ -151,749 +191,549 @@ string objectCodeGenerator::getREG(string result)
 	RVALUE[R].clear();
 	return R;
 }
-void objectCodeGenerator::freshRA(pair<int, bool> tag, string R, string V, bool value_changed)
-{
-	if (value_changed || !tag.second)
-	{
-		for (auto i = 0; i < AVALUE[V].size(); i++)
-		{
-			if (RVALUE.find(AVALUE[V][i]) != RVALUE.end())
-			{
-				string opR = AVALUE[V][i];
-				for (auto j = 0; j < RVALUE[opR].size(); j++)
-				{
-					if (RVALUE[opR][j].first == V)
-					{
-						vector<pair<string, int>>::iterator iter = find(RVALUE[opR].begin(), RVALUE[opR].end(), RVALUE[opR][j]);
-						RVALUE[opR].erase(iter);
-						break;
-					}
-				}
-			}
-		}
-		if (tag.second)
-		{
-			AVALUE[V] = vector<string>{ R };
-			RVALUE[R].push_back(pair<string, int>(V, tag.first));
-		}
-		else
-		{
-			AVALUE.erase(V);
-		}
-	}
-	else
-	{
-		bool is_find = false;
-		//在R的记录中寻找V
-		for (auto i = 0; i < RVALUE[R].size(); i++)
-		{
-			if (RVALUE[R][i].first == V)
-			{
-				//找到V后更新V
-				is_find = true;
-				RVALUE[R][i].second = tag.first;
-				break;
-			}
-		}
-		//没找到V添加V
-		if (!is_find)
-			RVALUE[R].push_back(pair<string, int>(V, tag.first));
 
-		//V是否存在于AVALUE
-		if (AVALUE.find(V) == AVALUE.end())
-		{
-			//V不存在于AVALUE中则新建V
-			AVALUE[V] = vector<string>{ R };
+void updateMessageItem(const int& i, const string& arg, map<string, Tag>& messageLink, const BlockItem& b, MessageTableItem& item, const int& p) {
+	if (arg[0] == 'G' || arg[0] == 'V' || arg[0] == 'T') {
+		if (messageLink.find(arg) == messageLink.end()) {
+			if (arg[0] == 'G' || find(b.waitVar.begin(), b.waitVar.end(), arg) != b.waitVar.end()) {
+				messageLink[arg] = Tag(INT_MAX, true);
+			}
+			else {
+				messageLink[arg] = Tag(0, false);
+			}
 		}
-		else
-		{
-			//V在AVALUE中
-			if (find(AVALUE[V].begin(), AVALUE[V].end(), R) == AVALUE[V].end())
-				//V的记录中没有R则添加R
-				AVALUE[V].push_back(R);
+		item.tags[p] = messageLink[arg];
+		if (p == MessageTableItem::resultPos) {
+			messageLink[arg] = Tag(0, false);
+		}
+		else {
+			messageLink[arg] = Tag(i, true);
 		}
 	}
 }
-void objectCodeGenerator::endBlock()
-{
-	//基本块处理结束
-	for (map<string, vector<string>>::iterator iter = AVALUE.begin(); iter != AVALUE.end(); iter++)
-	{
-		string V = iter->first;
-		//尚未存入内存的变量
-		if (find(AVALUE[V].begin(), AVALUE[V].end(), "M") == AVALUE[V].end())
-		{
-			string R;
-			for (auto i = 0; i < AVALUE[V].size(); i++)
-			{
-				if (AVALUE[V][i] != "M")
 
-				{
-					R = AVALUE[V][i];
-					break;
-				}
-			}
-			if (V[0] == 'G')
-				emit("sw " + R + "," + DATA + "+" + to_string(stoi(V.substr(1))));
-			else if (V[0] == 'V')
-				emit("sw " + R + "," + STACK + "+" + to_string(4 + stoi(V.substr(1))) + "($fp)");
-			else if (V[0] == 'T')
-				emit("sw " + R + "," + TEMP + "+" + to_string(4 * stoi(V.substr(1))));
-			else
-			{
-				//cerr << "ERROR: AVALUE中出现意外的变量名:" << V << endl;
-				//exit(-1);
-				throw string("ERROR: 目标代码生成器错误:AVALUE中出现意外的变量名:") + V + string("\n");
-			}
-			//AVALUE[V].push_back("M");
+vector<MessageTableItem> ObjectCodeGenerater::generateMessageTable(const int& blkno) {
+	vector<MessageTableItem> messageTable;
+	map<string, Tag> messageLink;
+
+	// 遍历blkno对应代码块
+	for (int i = block[blkno].end; i >= block[blkno].begin; i--) {
+		Quaternion q = intermediateCode[i];
+		MessageTableItem item(i, q);
+		updateMessageItem(i, q.arg1, messageLink, block[blkno], item, MessageTableItem::arg1Pos);
+		updateMessageItem(i, q.arg2, messageLink, block[blkno], item, MessageTableItem::arg2Pos);
+		updateMessageItem(i, q.result, messageLink, block[blkno], item, MessageTableItem::resultPos);
+		messageTable.push_back(item);
+	}
+	reverse(messageTable.begin(), messageTable.end());
+	return messageTable;
+}
+
+void ObjectCodeGenerater::preGenerate() {
+	for (int i = 0; i < ObjectCodeHeadSize; i++) {
+		if (i == ObjectCodeHeadDataSpacePos) {
+			string code = this->ObjectCodeHead[i] + to_string(this->dataBufferSize);
+			this->emit(code);
+		}
+		else if (i == ObjectCodeHeadStackSpacePos) {
+			string code = this->ObjectCodeHead[i] + to_string(this->stackBufferSize);
+			this->emit(code);
+		}
+		else if (i == ObjectCodeHeadTempSpacePos) {
+			string code = this->ObjectCodeHead[i] + to_string(this->tempBufferSize);
+			this->emit(code);
+		}
+		else {
+			this->emit(this->ObjectCodeHead[i]);
 		}
 	}
-	for (map<string, vector<pair<string, int>>>::iterator iter = RVALUE.begin(); iter != RVALUE.end(); iter++)
-	{
-		iter->second.clear();
-	}
-	AVALUE.clear();
 }
-void objectCodeGenerator::geneObjectCode()
-{
-	emit(".data");
-	emit(DATA + ":.space " + to_string(data_buf_size));
-	emit(STACK + ":.space " + to_string(stack_buf_size));
-	emit(TEMP + ":.space " + to_string(temp_buf_size));
-	emit(".text");
-	emit("j B0");
-	emit("B1:");
-	emit("nop");
-	emit("j B1");
-	emit("nop");
-	emit("B2:");
-	emit("jal Fmain");
-	emit("nop");
-	emit("break");
-	emit("B0:");
-	emit("addi $gp,$zero,0");
-	emit("addi $fp,$zero,0");
-	emit("addi $sp,$zero,4");
-	emit("j B2");
-	emit("nop");
 
-	for (auto block_no = 0; block_no < block_group.size(); block_no++)
-	{
-		vector<messageTableItem> MessageTable = geneMessageTable(block_no);
-		bool j_end = false;
-		for (auto i = 0; i < MessageTable.size(); i++)
-		{
-			new_code.clear();
-			Quaternion TAS = MessageTable[i].TAS;
-			string Reg_arg1, Reg_arg2;
-			if (TAS.arg1 == "" || TAS.op == "=[]")
-				Reg_arg1 = "";
-			else if (TAS.arg1[0] == '$')
-				Reg_arg1 = TAS.arg1;
-			else if (TAS.arg1 == "[$sp]")
-				Reg_arg1 = STACK + "($sp)";
-			else if (is_num(TAS.arg1))
-			{
-				if (TAS.op == "+")
-					Reg_arg1 = TAS.arg1;
-				else
-				{
-					emit("addi $t8,$zero," + TAS.arg1);
-					Reg_arg1 = "$t8";
-				}
-			}
-			else if (TAS.arg1[0] == 'G')
-			{
-				if (AVALUE.find(TAS.arg1) == AVALUE.end())
-				{
-					AVALUE[TAS.arg1] = vector<string>{ "M" };
-				}
-				else if (AVALUE[TAS.arg1].size() == 0)
-				{
-					//cerr << "ERROR: 找不到" << TAS.arg1 << "的地址\n";
-					//exit(-1);
-					throw string("ERROR: 目标代码生成器错误:找不到") + TAS.arg1 + string("的地址\n");
-				}
+string ObjectCodeGenerater::allocateRegGVT(const string& arg, const char& c, const int& i) {
+	string reg = i == 1 ? "$t8" : "$t9";
+	if (this->AVALUE.find(arg) == this->AVALUE.end()) { // AVALUE中不存在arg的key
+		this->AVALUE[arg] = vector<string>{ "M" };
+	}
+	else if (this->AVALUE[arg].size() == 0) {
+		cerr << "ERROR: 目标代码生成器找不到中间代码的arg地址" << endl;
+		exit(ERROR_OBJECTCODEGENERATER);
+	}
 
-				if (AVALUE[TAS.arg1].size() == 1 && AVALUE[TAS.arg1][0] == "M")
-				{
-					emit("lw $t8," + DATA + "+" + to_string(stoi(TAS.arg1.substr(1))));
-					Reg_arg1 = "$t8";
-				}
-				else
-				{
-					for (auto i = 0; i < AVALUE[TAS.arg1].size(); i++)
-					{
-						if (AVALUE[TAS.arg1][i] != "M")
-							Reg_arg1 = AVALUE[TAS.arg1][i];
-					}
-				}
-			}
-			else if (TAS.arg1[0] == 'V')
-			{
-				if (AVALUE.find(TAS.arg1) == AVALUE.end())
-				{
-					AVALUE[TAS.arg1] = vector<string>{ "M" };
-				}
-				else if (AVALUE[TAS.arg1].size() == 0)
-				{
-					//cerr << "ERROR: 找不到" << TAS.arg1 << "的地址\n";
-					//exit(-1);
-					throw string("ERROR: 目标代码生成器错误:找不到") + TAS.arg1 + string("的地址\n");
-				}
-
-				if (AVALUE[TAS.arg1].size() == 1 && AVALUE[TAS.arg1][0] == "M")
-				{
-					emit("lw $t8," + STACK + "+" + to_string(4 + stoi(TAS.arg1.substr(1))) + "($fp)");
-					Reg_arg1 = "$t8";
-				}
-				else
-				{
-					for (auto i = 0; i < AVALUE[TAS.arg1].size(); i++)
-					{
-						if (AVALUE[TAS.arg1][i] != "M")
-							Reg_arg1 = AVALUE[TAS.arg1][i];
-					}
-				}
-			}
-			else if (TAS.arg1[0] == 'T')
-			{
-				if (AVALUE.find(TAS.arg1) == AVALUE.end())
-				{
-					AVALUE[TAS.arg1] = vector<string>{ "M" };
-				}
-				else if (AVALUE[TAS.arg1].size() == 0)
-				{
-					//cerr << "ERROR: 找不到" << TAS.arg1 << "的地址\n";
-					//exit(-1);
-					throw string("ERROR: 目标代码生成器错误:找不到") + TAS.arg1 + string("的地址\n");
-				}
-
-				if (AVALUE[TAS.arg1].size() == 1 && AVALUE[TAS.arg1][0] == "M")
-				{
-					emit("lw $t8," + TEMP + "+" + to_string(4 * stoi(TAS.arg1.substr(1))));
-					Reg_arg1 = "$t8";
-				}
-				else
-				{
-					for (auto i = 0; i < AVALUE[TAS.arg1].size(); i++)
-					{
-						if (AVALUE[TAS.arg1][i] != "M")
-							Reg_arg1 = AVALUE[TAS.arg1][i];
-					}
-				}
-			}
-
-			if (TAS.arg2 == "")
-				Reg_arg2 = "";
-			else if (TAS.arg2[0] == '$')
-				Reg_arg2 = TAS.arg2;
-			else if (TAS.arg2 == "[$sp]")
-				Reg_arg2 = STACK + "($sp)";
-			else if (is_num(TAS.arg2))
-			{
-				if (TAS.op == "+" && !is_num(Reg_arg1))//不能有两个立即数
-					Reg_arg2 = TAS.arg2;
-				else
-				{
-					emit("addi $t9,$zero," + TAS.arg2);
-					Reg_arg2 = "$t9";
-				}
-			}
-			else if (TAS.arg2[0] == 'G')
-			{
-				if (AVALUE.find(TAS.arg2) == AVALUE.end())
-				{
-					AVALUE[TAS.arg2] = vector<string>{ "M" };
-				}
-				else if (AVALUE[TAS.arg2].size() == 0)
-				{
-					//cerr << "ERROR: 找不到" << TAS.arg2 << "的地址\n";
-					//exit(-1);
-					throw string("ERROR: 目标代码生成器错误:找不到") + TAS.arg2 + string("的地址\n");
-				}
-
-				if (AVALUE[TAS.arg2].size() == 1 && AVALUE[TAS.arg2][0] == "M")
-				{
-					emit("lw $t9," + DATA + "+" + to_string(stoi(TAS.arg2.substr(1))));
-					Reg_arg2 = "$t9";
-				}
-				else
-				{
-					for (auto i = 0; i < AVALUE[TAS.arg2].size(); i++)
-					{
-						if (AVALUE[TAS.arg2][i] != "M")
-							Reg_arg2 = AVALUE[TAS.arg2][i];
-					}
-				}
-			}
-			else if (TAS.arg2[0] == 'V')
-			{
-				if (AVALUE.find(TAS.arg2) == AVALUE.end())
-				{
-					AVALUE[TAS.arg2] = vector<string>{ "M" };
-				}
-				else if (AVALUE[TAS.arg2].size() == 0)
-				{
-					//cerr << "ERROR: 找不到" << TAS.arg2 << "的地址\n";
-					//exit(-1);
-					throw string("ERROR: 目标代码生成器错误:找不到") + TAS.arg2 + string("的地址\n");
-				}
-
-				if (AVALUE[TAS.arg2].size() == 1 && AVALUE[TAS.arg2][0] == "M")
-				{
-					emit("lw $t9," + STACK + "+" + to_string(4 + stoi(TAS.arg2.substr(1))) + "($fp)");
-					Reg_arg2 = "$t9";
-				}
-				else
-				{
-					for (auto i = 0; i < AVALUE[TAS.arg2].size(); i++)
-					{
-						if (AVALUE[TAS.arg2][i] != "M")
-							Reg_arg2 = AVALUE[TAS.arg2][i];
-					}
-				}
-			}
-			else if (TAS.arg2[0] == 'T')
-			{
-				if (AVALUE.find(TAS.arg2) == AVALUE.end())
-				{
-					AVALUE[TAS.arg2] = vector<string>{ "M" };
-				}
-				else if (AVALUE[TAS.arg2].size() == 0)
-				{
-					//cerr << "ERROR: 找不到" << TAS.arg2 << "的地址\n";
-					//exit(-1);
-					throw string("ERROR: 目标代码生成器错误:找不到") + TAS.arg2 + string("的地址\n");
-				}
-
-				if (AVALUE[TAS.arg2].size() == 1 && AVALUE[TAS.arg2][0] == "M")
-				{
-					emit("lw $t9," + TEMP + "+" + to_string(4 * stoi(TAS.arg2.substr(1))));
-					Reg_arg2 = "$t9";
-				}
-				else
-				{
-					for (auto i = 0; i < AVALUE[TAS.arg2].size(); i++)
-					{
-						if (AVALUE[TAS.arg2][i] != "M")
-							Reg_arg2 = AVALUE[TAS.arg2][i];
-					}
-				}
-			}
-
-			if (TAS.op[0] == 'F' || TAS.op[0] == 'L')
-			{
-				emit(TAS.op + ":");
-			}
-			else if (TAS.op == "nop")
-			{
-				emit("nop");
-			}
-			else if (TAS.op == "j")
-			{
-				j_end = true;
-				endBlock();
-				emit("j " + TAS.result);
-			}
-			else if (TAS.op == "jal")
-			{
-				j_end = true;
-				//endBlock();
-				emit("jal " + TAS.result);
-			}
-			else if (TAS.op == "break")
-			{
-				j_end = true;
-				endBlock();
-				emit("break");
-			}
-			else if (TAS.op == "ret")
-			{
-				j_end = true;
-				endBlock();
-				emit("jr $ra");
-			}
-			else if (TAS.op == "jnz")
-			{
-				j_end = true;
-				if (RVALUE.find(Reg_arg1) != RVALUE.end())
-					freshRA(MessageTable[i].arg1_tag, Reg_arg1, TAS.arg1, false);
-				endBlock();
-				emit("bne " + Reg_arg1 + ",$zero," + TAS.result);
-			}
-			else if (TAS.op == "j<")
-			{
-				j_end = true;
-				emit("addi $t8," + Reg_arg1 + ",1");
-				emit("sub $t9," + Reg_arg2 + ",$t8");
-				if (RVALUE.find(Reg_arg1) != RVALUE.end())
-					freshRA(MessageTable[i].arg1_tag, Reg_arg1, TAS.arg1, false);
-				if (RVALUE.find(Reg_arg2) != RVALUE.end())
-					freshRA(MessageTable[i].arg2_tag, Reg_arg2, TAS.arg2, false);
-				endBlock();
-				emit("bgez $t9," + TAS.result);
-			}
-			else if (TAS.op == "j<=")
-			{
-				j_end = true;
-				emit("sub $t9," + Reg_arg2 + "," + Reg_arg1);
-				if (RVALUE.find(Reg_arg1) != RVALUE.end())
-					freshRA(MessageTable[i].arg1_tag, Reg_arg1, TAS.arg1, false);
-				if (RVALUE.find(Reg_arg2) != RVALUE.end())
-					freshRA(MessageTable[i].arg2_tag, Reg_arg2, TAS.arg2, false);
-				endBlock();
-				emit("bgez $t9," + TAS.result);
-			}
-			else if (TAS.op == "j>")
-			{
-				j_end = true;
-				emit("addi $t9," + Reg_arg2 + ",1");
-				emit("sub  $t8," + Reg_arg1 + ",$t9");
-				if (RVALUE.find(Reg_arg1) != RVALUE.end())
-					freshRA(MessageTable[i].arg1_tag, Reg_arg1, TAS.arg1, false);
-				if (RVALUE.find(Reg_arg2) != RVALUE.end())
-					freshRA(MessageTable[i].arg2_tag, Reg_arg2, TAS.arg2, false);
-				endBlock();
-				emit("bgez $t8," + TAS.result);
-			}
-			else if (TAS.op == "j>=")
-			{
-				j_end = true;
-				emit("sub $t8," + Reg_arg1 + "," + Reg_arg2);
-				if (RVALUE.find(Reg_arg1) != RVALUE.end())
-					freshRA(MessageTable[i].arg1_tag, Reg_arg1, TAS.arg1, false);
-				if (RVALUE.find(Reg_arg2) != RVALUE.end())
-					freshRA(MessageTable[i].arg2_tag, Reg_arg2, TAS.arg2, false);
-				endBlock();
-				emit("bgez $t8," + TAS.result);
-			}
-			else if (TAS.op == "j==")
-			{
-				j_end = true;
-				if (RVALUE.find(Reg_arg1) != RVALUE.end())
-					freshRA(MessageTable[i].arg1_tag, Reg_arg1, TAS.arg1, false);
-				if (RVALUE.find(Reg_arg2) != RVALUE.end())
-					freshRA(MessageTable[i].arg2_tag, Reg_arg2, TAS.arg2, false);
-				endBlock();
-				emit("beq " + Reg_arg1 + "," + Reg_arg2 + "," + TAS.result);
-			}
-			else if (TAS.op == "j!=")
-			{
-				j_end = true;
-				if (RVALUE.find(Reg_arg1) != RVALUE.end())
-					freshRA(MessageTable[i].arg1_tag, Reg_arg1, TAS.arg1, false);
-				if (RVALUE.find(Reg_arg2) != RVALUE.end())
-					freshRA(MessageTable[i].arg2_tag, Reg_arg2, TAS.arg2, false);
-				endBlock();
-				emit("bne " + Reg_arg1 + "," + Reg_arg2 + "," + TAS.result);
-			}
-			else if (TAS.op == ":=")
-			{
-				string R;
-				if (TAS.result[0] == '$')
-				{
-					R = TAS.result;
-					if (TAS.arg1 == "[$sp]")
-					{
-						emit("lw " + R + "," + Reg_arg1);
-					}
-					else
-					{
-						emit("add " + R + ",$zero," + Reg_arg1);
-					}
-				}
-				else if (TAS.result == "[$sp]")
-				{
-					R = STACK + "($sp)";
-					if (TAS.arg1 == "[$sp]")
-					{
-						//cerr << "ERROR: 从[$sp]到[$sp]的赋值\n";
-						//exit(-1);
-						throw string("ERROR: 目标代码生成器错误:发生从[$sp]到[$sp]的赋值\n");
-					}
-					else
-					{
-						emit("sw " + Reg_arg1 + "," + R);
-					}
-				}
-				else
-				{
-					R = getREG(TAS.result);
-					if (TAS.arg1 == "[$sp]")
-					{
-						emit("lw " + R + "," + Reg_arg1);
-					}
-					else
-					{
-						emit("add " + R + ",$zero," + Reg_arg1);
-					}
-				}
-				if (RVALUE.find(R) != RVALUE.end())
-					freshRA(MessageTable[i].result_tag, R, TAS.result, true);
-				if (RVALUE.find(Reg_arg1) != RVALUE.end())
-					freshRA(MessageTable[i].arg1_tag, Reg_arg1, TAS.arg1, false);
-			}
-			else if (TAS.op == "[]=")
-			{
-				string base = TAS.result;
-				if (TAS.result[0] == 'G')
-				{
-					emit("sll $t9," + Reg_arg2 + ",2");
-					emit("addi $t9,$t9," + base.substr(1));
-					emit("sw " + Reg_arg1 + "," + DATA + "($t9)");
-				}
-				else if (TAS.result[0] == 'V')
-				{
-					emit("sll $t9," + Reg_arg2 + ",2");
-					emit("addi $t9,$t9," + base.substr(1));
-					emit("addi $t9,$t9,4");
-					emit("add $t9,$t9,$fp");
-					emit("sw " + Reg_arg1 + "," + STACK + "($t9)");
-				}
-				else if (TAS.result[0] == 'T')
-				{
-					emit("addi $t9," + Reg_arg2 + "," + base.substr(1));
-					emit("sll $t9,$t9,2");
-					emit("sw " + Reg_arg1 + "," + TEMP + "($t9)");
-				}
-				else
-				{
-					//cerr << "ERROR: []=的左部result标识符不合法\n";
-					//exit(-1);
-					throw string("ERROR: 目标代码生成器错误:[]=的左部result标识符不合法\n");
-				}
-				if (RVALUE.find(Reg_arg1) != RVALUE.end())
-					freshRA(MessageTable[i].arg1_tag, Reg_arg1, TAS.arg1, false);
-				if (RVALUE.find(Reg_arg2) != RVALUE.end())
-					freshRA(MessageTable[i].arg2_tag, Reg_arg2, TAS.arg2, false);
-			}
-			else if (TAS.op == "=[]")
-			{
-				string R;
-				if (TAS.result[0] == '$')
-					R = TAS.result;
-				else if (TAS.result == "[$sp]")
-					R = STACK + "($sp)";
-				else
-					R = getREG(TAS.result);
-				if (TAS.arg1[0] == 'G')
-				{
-					emit("sll $t9," + Reg_arg2 + ",2");
-					emit("addi $t9,$t9," + TAS.arg1.substr(1));
-					emit("lw " + R + "," + DATA + "($t9)");
-				}
-				else if (TAS.arg1[0] == 'V')
-				{
-					emit("sll $t9," + Reg_arg2 + ",2");
-					emit("addi $t9,$t9," + TAS.arg1.substr(1));
-					emit("addi $t9,$t9,4");
-					emit("add $t9,$t9,$fp");
-					emit("lw " + R + "," + STACK + "($t9)");
-				}
-				else if (TAS.arg1[0] == 'T')
-				{
-					emit("addi $t9," + Reg_arg2 + "," + TAS.arg1.substr(1));
-					emit("sll $t9,$t9,2");
-					emit("lw " + R + "," + TEMP + "($t9)");
-				}
-				else
-				{
-					//cerr << "ERROR: =[]的右部arg1标识符不合法\n";
-					//exit(-1);
-					throw string("ERROR: 目标代码生成器错误:=[]的右部arg1标识符不合法\n");
-				}
-				if (RVALUE.find(R) != RVALUE.end())
-					freshRA(MessageTable[i].result_tag, R, TAS.result, true);
-				if (RVALUE.find(Reg_arg2) != RVALUE.end())
-					freshRA(MessageTable[i].arg2_tag, Reg_arg2, TAS.arg2, false);
-			}
-			else if (TAS.op == "+")
-			{
-				string R;
-				if (TAS.result[0] == '$')
-					R = TAS.result;
-				else if (TAS.result == "[$sp]")
-					R = STACK + "($sp)";
-				else
-					R = getREG(TAS.result);
-
-				if (is_num(Reg_arg1))
-					emit("addi " + R + "," + Reg_arg2 + "," + Reg_arg1);
-				else if (is_num(Reg_arg2))
-					emit("addi " + R + "," + Reg_arg1 + "," + Reg_arg2);
-				else
-					emit("add " + R + "," + Reg_arg1 + "," + Reg_arg2);
-				if (RVALUE.find(R) != RVALUE.end())
-					freshRA(MessageTable[i].result_tag, R, TAS.result, true);
-				if (RVALUE.find(Reg_arg1) != RVALUE.end())
-					freshRA(MessageTable[i].arg1_tag, Reg_arg1, TAS.arg1, false);
-				if (RVALUE.find(Reg_arg2) != RVALUE.end())
-					freshRA(MessageTable[i].arg2_tag, Reg_arg2, TAS.arg2, false);
-			}
-			else if (TAS.op == "-")
-			{
-				string R;
-				if (TAS.result[0] == '$')
-					R = TAS.result;
-				else if (TAS.result == "[$sp]")
-					R = STACK + "($sp)";
-				else
-					R = getREG(TAS.result);
-				emit("sub " + R + "," + Reg_arg1 + "," + Reg_arg2);
-				if (RVALUE.find(R) != RVALUE.end())
-					freshRA(MessageTable[i].result_tag, R, TAS.result, true);
-				if (RVALUE.find(Reg_arg1) != RVALUE.end())
-					freshRA(MessageTable[i].arg1_tag, Reg_arg1, TAS.arg1, false);
-				if (RVALUE.find(Reg_arg2) != RVALUE.end())
-					freshRA(MessageTable[i].arg2_tag, Reg_arg2, TAS.arg2, false);
-			}
-			else if (TAS.op == "&")
-			{
-				string R;
-				if (TAS.result[0] == '$')
-					R = TAS.result;
-				else if (TAS.result == "[$sp]")
-					R = STACK + "($sp)";
-				else
-					R = getREG(TAS.result);
-				emit("and " + R + "," + Reg_arg1 + "," + Reg_arg2);
-				if (RVALUE.find(R) != RVALUE.end())
-					freshRA(MessageTable[i].result_tag, R, TAS.result, true);
-				if (RVALUE.find(Reg_arg1) != RVALUE.end())
-					freshRA(MessageTable[i].arg1_tag, Reg_arg1, TAS.arg1, false);
-				if (RVALUE.find(Reg_arg2) != RVALUE.end())
-					freshRA(MessageTable[i].arg2_tag, Reg_arg2, TAS.arg2, false);
-			}
-			else if (TAS.op == "|")
-			{
-				string R;
-				if (TAS.result[0] == '$')
-					R = TAS.result;
-				else if (TAS.result == "[$sp]")
-					R = STACK + "($sp)";
-				else
-					R = getREG(TAS.result);
-				emit("or " + R + "," + Reg_arg1 + "," + Reg_arg2);
-				if (RVALUE.find(R) != RVALUE.end())
-					freshRA(MessageTable[i].result_tag, R, TAS.result, true);
-				if (RVALUE.find(Reg_arg1) != RVALUE.end())
-					freshRA(MessageTable[i].arg1_tag, Reg_arg1, TAS.arg1, false);
-				if (RVALUE.find(Reg_arg2) != RVALUE.end())
-					freshRA(MessageTable[i].arg2_tag, Reg_arg2, TAS.arg2, false);
-			}
-			else if (TAS.op == "^")
-			{
-				string R;
-				if (TAS.result[0] == '$')
-					R = TAS.result;
-				else if (TAS.result == "[$sp]")
-					R = STACK + "($sp)";
-				else
-					R = getREG(TAS.result);
-				emit("xor " + R + "," + Reg_arg1 + "," + Reg_arg2);
-				if (RVALUE.find(R) != RVALUE.end())
-					freshRA(MessageTable[i].result_tag, R, TAS.result, true);
-				if (RVALUE.find(Reg_arg1) != RVALUE.end())
-					freshRA(MessageTable[i].arg1_tag, Reg_arg1, TAS.arg1, false);
-				if (RVALUE.find(Reg_arg2) != RVALUE.end())
-					freshRA(MessageTable[i].arg2_tag, Reg_arg2, TAS.arg2, false);
-			}
-			else if (TAS.op == "*")
-			{
-				string R;
-				if (TAS.result[0] == '$')
-					R = TAS.result;
-				else if (TAS.result == "[$sp]")
-					R = STACK + "($sp)";
-				else
-					R = getREG(TAS.result);
-				emit("mul " + R + "," + Reg_arg1 + "," + Reg_arg2);
-				if (RVALUE.find(R) != RVALUE.end())
-					freshRA(MessageTable[i].result_tag, R, TAS.result, true);
-				if (RVALUE.find(Reg_arg1) != RVALUE.end())
-					freshRA(MessageTable[i].arg1_tag, Reg_arg1, TAS.arg1, false);
-				if (RVALUE.find(Reg_arg2) != RVALUE.end())
-					freshRA(MessageTable[i].arg2_tag, Reg_arg2, TAS.arg2, false);
-			}
-			else if (TAS.op == "/")
-			{
-				string R;
-				if (TAS.result[0] == '$')
-					R = TAS.result;
-				else if (TAS.result == "[$sp]")
-					R = STACK + "($sp)";
-				else
-					R = getREG(TAS.result);
-				emit("div " + Reg_arg1 + "," + Reg_arg2);
-				emit("mflo " + R);//Quotient in $lo
-				if (RVALUE.find(R) != RVALUE.end())
-					freshRA(MessageTable[i].result_tag, R, TAS.result, true);
-				if (RVALUE.find(Reg_arg1) != RVALUE.end())
-					freshRA(MessageTable[i].arg1_tag, Reg_arg1, TAS.arg1, false);
-				if (RVALUE.find(Reg_arg2) != RVALUE.end())
-					freshRA(MessageTable[i].arg2_tag, Reg_arg2, TAS.arg2, false);
-			}
-			else
-			{
-				//cerr << "ERROR: 非法的中间代码" << TAS.op << '\t' << TAS.arg1 << '\t' << TAS.arg2 << '\t' << TAS.result << "\n";
-				//exit(-1);
-				throw string("ERROR: 目标代码生成器错误:非法的中间代码") + TAS.op + string(" ") + TAS.arg1 + string(" ") + TAS.arg2 + string(" ") + TAS.result + string("\n");
-			}
-			analysisHistory.push_back({ TAS,new_code,RVALUE,AVALUE });
+	if (this->AVALUE[arg].size() == 1 && this->AVALUE[arg][0] == "M") {
+		if (c == 'G') {
+			this->emit("lw " + reg + ",data + " + to_string(stoi(arg.substr(1))));
 		}
-		if (!j_end)
-			endBlock();
+		else if (c == 'V') {
+			this->emit("lw " + reg + ",stack+" + to_string(4 + stoi(arg.substr(1))) + "($fp)");
+		}
+		else if (c == 'T') {
+			this->emit("lw " + reg + ",temp+" + to_string(4 * stoi(arg.substr(1))));
+		}
+		else {
+			cerr << "ERROR: 目标代码生成器找不到中间代码的arg地址" << endl;
+			exit(ERROR_OBJECTCODEGENERATER);
+		}
+		return reg;
+	}
+	else {
+		for (int i = 0; i < this->AVALUE[arg].size(); i++) {
+			if (this->AVALUE[arg][i] != "M") {
+				reg = this->AVALUE[arg][i];
+			}
+		}
+		return reg;
 	}
 }
-void objectCodeGenerator::showMessageTableHistory()
-{
-	for (auto tno = 0; tno < messageTableHistory.size(); tno++)
-	{
-		messageTableItem message_table = messageTableHistory[tno];
-		cout << "(" << message_table.no << ")\t" << message_table.TAS.op << ' ' << message_table.TAS.arg1 << ' ' << message_table.TAS.arg2 << ' ' << message_table.TAS.result;
-		cout << "\t(" << message_table.arg1_tag.first << ',' << message_table.arg1_tag.second << ")";
-		cout << "\t(" << message_table.arg2_tag.first << ',' << message_table.arg2_tag.second << ")";
-		cout << "\t(" << message_table.result_tag.first << ',' << message_table.result_tag.second << ")\n";
-	}
-}
-void objectCodeGenerator::showAnalysisHistory()
-{
-	for (auto ino = 0; ino < analysisHistory.size(); ino++)
-	{
-		analysisHistoryItem e = analysisHistory[ino];
 
-		cout << "\n****************(" << e.TAS.op << "," << e.TAS.arg1 << "," << e.TAS.arg2 << "," << e.TAS.result << ")****************\n";
-		for (auto i = 0; i < e.object_codes.size(); i++)
-		{
-			cout << e.object_codes[i] << '\t';
+string ObjectCodeGenerater::allocateReg(const string& arg, const string& op, const int& i, const string& regAllocated) {
+	string reg = i == 1 ? "$t8" : "$t9";
+	if ((i == 1 && (arg == "" || op == "=[]")) || (i == 2 && arg == "")) {
+		return "";
+	}
+	else if (arg[0] == '$') {
+		return arg;
+	}
+	else if (arg == "[$sp]") {
+		return "stack($sp)";
+	}
+	else if (is_num(arg)) {
+		if ((i == 1 && op == "+") || (i == 2 && op == "+" && !is_num(regAllocated))) {
+			return arg;
 		}
-		cout << "\n********RVALUE********\n";
-		for (map<string, vector<pair<string, int>>>::iterator iter = e.RVALUE.begin(); iter != e.RVALUE.end(); iter++)
-		{
-			cout << iter->first << "\t";
-			for (auto i = 0; i < iter->second.size(); i++)
-			{
-				cout << iter->second[i].first << ":" << iter->second[i].second << "\t";
-			}
-			cout << endl;
+		else {
+			this->emit("addi "+ reg + ",$zero," + arg);
+			return reg;
 		}
-		cout << "**********************\n";
-		cout << "\n********AVALUE********\n";
-		for (map<string, vector<string>>::iterator iter = e.AVALUE.begin(); iter != e.AVALUE.end(); iter++)
-		{
-			cout << iter->first << "\t";
-			for (auto i = 0; i < iter->second.size(); i++)
-			{
-				cout << iter->second[i] << "\t";
-			}
-			cout << endl;
-		}
-		cout << "**********************\n";
+	}
+	else if (arg[0] == 'G') {
+		return this->allocateRegGVT(arg, 'G', i);
+	}
+	else if (arg[0] == 'V') {
+		return this->allocateRegGVT(arg, 'V', i);
+	}
+	else if (arg[0] == 'T') {
+		return this->allocateRegGVT(arg, 'T', i);
 	}
 }
-void objectCodeGenerator::showObjectCode()
-{
-	for (auto i = 0; i < object_code.size(); i++)
-		cout << "(" << i << ")\t" << object_code[i] << endl;
+
+void ObjectCodeGenerater::generateNop() {
+	this->emit("nop");
 }
+
+void ObjectCodeGenerater::generateJ(bool& jEnd, const Quaternion& q) {
+	jEnd = true;
+	this->endBlock();
+	this->emit("j " + q.result);
+}
+
+void ObjectCodeGenerater::generateJal(bool& jEnd, const Quaternion& q) {
+	jEnd = true;
+	this->emit("jal " + q.result);
+}
+
+void ObjectCodeGenerater::generateBreak(bool& jEnd) {
+	jEnd = true;
+	this->endBlock();
+	this->emit("break");
+}
+
+void ObjectCodeGenerater::generateRet(bool& jEnd) {
+	jEnd = true;
+	this->endBlock();
+	this->emit("jr $ra");
+}
+
+void ObjectCodeGenerater::generateJnz(bool& jEnd, const Quaternion& q, const string& reg1, const MessageTableItem& item) {
+	jEnd = true;
+	if (this->RVALUE.find(reg1) != this->RVALUE.end()) {
+		this->updateVALUE(item.tags[MessageTableItem::arg1Pos], reg1, q.arg1, false);
+	}
+	this->endBlock();
+	this->emit("bne " + reg1 + ",$zero," + q.result);
+}
+
+void ObjectCodeGenerater::generateJcmp(bool& jEnd, const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item, const int& type) {
+	jEnd = true;
+
+	switch (type) {
+		case Type_Jl:
+			this->emit("addi $t8," + reg1 + ",1");
+			this->emit("sub $t9," + reg2 + ",$t8");
+			break;
+		case Type_Jle:
+			this->emit("sub $t9," + reg2 + "," + reg1);
+			break;
+		case Type_Jg:
+			this->emit("addi $t9," + reg2 + ",1");
+			this->emit("sub  $t8," + reg1 + ",$t9");
+			break;
+		case Type_Jge:
+			this->emit("sub $t8," + reg1 + "," + reg2);
+			break;
+		default:
+			break;
+	}
+	
+	if (this->RVALUE.find(reg1) != this->RVALUE.end()) {
+		this->updateVALUE(item.tags[MessageTableItem::arg1Pos], reg1, q.arg1, false);
+	}
+	if (this->RVALUE.find(reg2) != this->RVALUE.end()) {
+		this->updateVALUE(item.tags[MessageTableItem::arg2Pos], reg2, q.arg2, false);
+	}
+
+	this->endBlock();
+
+	switch (type) {
+		case Type_Jl:
+		case Type_Jle:
+			this->emit("bgez $t9," + q.result);
+			break;
+		case Type_Jg:
+		case Type_Jge:
+			this->emit("bgez $t8," + q.result);
+			break;
+		case Type_Jeq:
+			this->emit("beq " + reg1 + "," + reg2 + "," + q.result);
+			break;
+		case Type_Jne:
+			this->emit("bne " + reg1 + "," + reg2 + "," + q.result);
+			break;
+		default:
+			break;
+	}
+}
+
+void ObjectCodeGenerater::generateJl(bool& jEnd, const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item) {
+	this->generateJcmp(jEnd, q, reg1, reg2, item, Type_Jl);
+}
+
+void ObjectCodeGenerater::generateJle(bool& jEnd, const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item) {
+	this->generateJcmp(jEnd, q, reg1, reg2, item, Type_Jle);
+}
+
+void ObjectCodeGenerater::generateJg(bool& jEnd, const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item) {
+	this->generateJcmp(jEnd, q, reg1, reg2, item, Type_Jg);
+}
+
+void ObjectCodeGenerater::generateJge(bool& jEnd, const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item) {
+	this->generateJcmp(jEnd, q, reg1, reg2, item, Type_Jge);
+}
+
+void ObjectCodeGenerater::generateJeq(bool& jEnd, const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item) {
+	this->generateJcmp(jEnd, q, reg1, reg2, item, Type_Jeq);
+}
+
+void ObjectCodeGenerater::generateJne(bool& jEnd, const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item) {
+	this->generateJcmp(jEnd, q, reg1, reg2, item, Type_Jne);
+}
+
+void ObjectCodeGenerater::generateAssign(const Quaternion& q, const string& reg1, const MessageTableItem& item) {
+	string R;
+	if (q.result[0] == '$') {
+		R = q.result;
+		if (q.arg1 == "[$sp]") {
+			this->emit("lw " + R + "," + reg1);
+		}
+		else {
+			this->emit("add " + R + ",$zero," + reg1);
+		}
+	}
+	else if (q.result == "[$sp]") {
+		R = "stack($sp)";
+		if (q.arg1 == "[$sp]") {
+			cerr << "ERROR: 从[$sp]到[$sp]的赋值" << endl;;
+			exit(ERROR_OBJECTCODEGENERATER);
+		}
+		else {
+			this->emit("sw " + reg1 + "," + R);
+		}
+	}
+	else {
+		R = getReg(q.result);
+		if (q.arg1 == "[$sp]") {
+			this->emit("lw " + R + "," + reg1);
+		}
+		else {
+			this->emit("add " + R + ",$zero," + reg1);
+		}
+	}
+	if (RVALUE.find(R) != RVALUE.end()) {
+		this->updateVALUE(item.tags[MessageTableItem::resultPos], R, q.result, true);
+	}
+	if (RVALUE.find(reg1) != RVALUE.end()) {
+		this->updateVALUE(item.tags[MessageTableItem::arg1Pos], reg1, q.arg1, false);
+	}
+}
+
+void ObjectCodeGenerater::generateIndexAssign(const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item) {
+	string base = q.result;
+	if (q.result[0] == 'G') {
+		this->emit("sll $t9," + reg2 + ",2");
+		this->emit("addi $t9,$t9," + base.substr(1));
+		this->emit("sw " + reg1 + ",data" + "($t9)");
+	}
+	else if (q.result[0] == 'V') {
+		this->emit("sll $t9," + reg2 + ",2");
+		this->emit("addi $t9,$t9," + base.substr(1));
+		this->emit("addi $t9,$t9,4");
+		this->emit("add $t9,$t9,$fp");
+		this->emit("sw " + reg1 + ",stack" + "($t9)");
+	}
+	else if (q.result[0] == 'T') {
+		this->emit("addi $t9," + reg2 + "," + base.substr(1));
+		this->emit("sll $t9,$t9,2");
+		this->emit("sw " + reg1 + ",temp" + "($t9)");
+	}
+	else {
+		cerr << "ERROR: []=的左部result标识符不合法\n";
+		exit(ERROR_OBJECTCODEGENERATER);
+	}
+
+	if (this->RVALUE.find(reg1) != this->RVALUE.end()) {
+		this->updateVALUE(item.tags[MessageTableItem::arg1Pos], reg1, q.arg1, false);
+	}
+	if (this->RVALUE.find(reg2) != this->RVALUE.end()) {
+		this->updateVALUE(item.tags[MessageTableItem::arg2Pos], reg2, q.arg2, false);
+	}
+}
+
+void ObjectCodeGenerater::generateAssignIndex(const Quaternion& q, const string& reg2, const MessageTableItem& item) {
+	string R;
+	if (q.result[0] == '$') {
+		R = q.result;
+	}
+	else if (q.result == "[$sp]") {
+		R = "stack($sp)";
+	}
+	else {
+		R = getReg(q.result);
+	}
+
+	if (q.arg1[0] == 'G') {
+		this->emit("sll $t9," + reg2 + ",2");
+		this->emit("addi $t9,$t9," + q.arg1.substr(1));
+		this->emit("lw " + R + ",data($t9)");
+	}
+	else if (q.arg1[0] == 'V') {
+		this->emit("sll $t9," + reg2 + ",2");
+		this->emit("addi $t9,$t9," + q.arg1.substr(1));
+		this->emit("addi $t9,$t9,4");
+		this->emit("add $t9,$t9,$fp");
+		this->emit("lw " + R + ",stack($t9)");
+	}
+	else if (q.arg1[0] == 'T') {
+		this->emit("addi $t9," + reg2 + "," + q.arg1.substr(1));
+		this->emit("sll $t9,$t9,2");
+		this->emit("lw " + R + ",temp($t9)");
+	}
+	else {
+		cerr << "ERROR: =[]的右部arg1标识符不合法\n";
+		exit(-1);
+	}
+
+	if (RVALUE.find(R) != RVALUE.end()) {
+		this->updateVALUE(item.tags[MessageTableItem::resultPos], R, q.result, true);
+	}
+	if (this->RVALUE.find(reg2) != this->RVALUE.end()) {
+		this->updateVALUE(item.tags[MessageTableItem::arg2Pos], reg2, q.arg2, false);
+	}
+}
+
+void ObjectCodeGenerater::generateCalc(const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item, const int& type) {
+	string R;
+	if (q.result[0] == '$') {
+		R = q.result;
+	}
+	else if (q.result == "[$sp]") {
+		R = "stack($sp)";
+	}
+	else {
+		R = getReg(q.result);
+	}
+
+	switch (type) {
+		case Type_Plus:
+			if (is_num(reg1)) {
+				this->emit("addi " + R + "," + reg2 + "," + reg1);
+			}
+			else if (is_num(reg2)) {
+				this->emit("addi " + R + "," + reg1 + "," + reg2);
+			}
+			else {
+				this->emit("add " + R + "," + reg1 + "," + reg2);
+			}
+			break;
+		case Type_Minus:
+			this->emit("sub " + R + "," + reg1 + "," + reg2);
+			break;
+		case Type_And:
+			this->emit("and " + R + "," + reg1 + "," + reg2);
+			break;
+		case Type_Or:
+			this->emit("or " + R + "," + reg1 + "," + reg2);
+			break;
+		case Type_Xor:
+			this->emit("xor " + R + "," + reg1 + "," + reg2);
+			break;
+		case Type_Mul:
+			this->emit("mul " + R + "," + reg1 + "," + reg2);
+			break;
+		case Type_Divide:
+			this->emit("div " + R + "," + reg1 + "," + reg2);
+			this->emit("mflo " + R);
+			break;
+	}
+	
+
+	if (RVALUE.find(R) != RVALUE.end()) {
+		this->updateVALUE(item.tags[MessageTableItem::resultPos], R, q.result, true);
+	}
+	if (this->RVALUE.find(reg1) != this->RVALUE.end()) {
+		this->updateVALUE(item.tags[MessageTableItem::arg1Pos], reg1, q.arg1, false);
+	}
+	if (this->RVALUE.find(reg2) != this->RVALUE.end()) {
+		this->updateVALUE(item.tags[MessageTableItem::arg2Pos], reg2, q.arg2, false);
+	}
+}
+
+void ObjectCodeGenerater::generatePlus(const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item) {
+	this->generateCalc(q, reg1, reg2, item, Type_Plus);
+}
+
+void ObjectCodeGenerater::generateMinus(const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item) {
+	this->generateCalc(q, reg1, reg2, item, Type_Minus);
+}
+
+void ObjectCodeGenerater::generateAnd(const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item) {
+	this->generateCalc(q, reg1, reg2, item, Type_And);
+}
+
+void ObjectCodeGenerater::generateOr(const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item) {
+	this->generateCalc(q, reg1, reg2, item, Type_Or);
+}
+
+void ObjectCodeGenerater::generateXor(const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item) {
+	this->generateCalc(q, reg1, reg2, item, Type_Xor);
+}
+
+void ObjectCodeGenerater::generateMul(const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item) {
+	this->generateCalc(q, reg1, reg2, item, Type_Mul);
+}
+
+void ObjectCodeGenerater::generateDivide(const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item) {
+	this->generateCalc(q, reg1, reg2, item, Type_Divide);
+}
+
+void ObjectCodeGenerater::generateObjectCode() {
+	this->preGenerate(); // 生成代码头
+
+	// 遍历所有代码块
+	for (int blkno = 0; blkno < block.size(); blkno++) {
+		vector<MessageTableItem> messageTable = generateMessageTable(blkno); // 产生信息表
+		bool jEnd = false;
+		// 遍历信息表
+		for (int i = 0; i < messageTable.size(); i++) {
+			
+			Quaternion q = messageTable[i].q;
+
+			// 为中间代码的操作数分配寄存器
+			string reg1 = this->allocateReg(q.arg1, q.op, 1);
+			string reg2 = this->allocateReg(q.arg2, q.op, 2, reg1);
+			
+			// 根据op生成目标代码
+			if (q.op[0] == 'F' || q.op[0] == 'L') {
+				this->emit(q.op + ":");
+			}
+			else if (q.op == OP_NOP) {
+				this->generateNop();
+			}
+			else if (q.op == OP_J) {
+				this->generateJ(jEnd, q);
+			}
+			else if (q.op == OP_JAL) {
+				this->generateJal(jEnd, q);
+			}
+			else if (q.op == OP_BREAK) {
+				this->generateBreak(jEnd);
+			}
+			else if (q.op == OP_RET) {
+				this->generateRet(jEnd);
+			}
+			else if (q.op == OP_JNZ) {
+				this->generateJnz(jEnd, q, reg1, messageTable[i]);
+			}
+			else if (q.op == OP_JL) {
+				this->generateJl(jEnd, q, reg1, reg2, messageTable[i]);
+			}
+			else if (q.op == OP_JLE) {
+				this->generateJle(jEnd, q, reg1, reg2, messageTable[i]);
+			}
+			else if (q.op == OP_JG) {
+				this->generateJg(jEnd, q, reg1, reg2, messageTable[i]);
+			}
+			else if (q.op == OP_JGE) {
+				this->generateJge(jEnd, q, reg1, reg2, messageTable[i]);
+			}
+			else if (q.op == OP_JEQ) {
+				this->generateJeq(jEnd, q, reg1, reg2, messageTable[i]);
+			}
+			else if (q.op == OP_JNE) {
+				this->generateJne(jEnd, q, reg1, reg2, messageTable[i]);
+			}
+			else if (q.op == OP_ASSIGN) {
+				this->generateAssign( q, reg1, messageTable[i]);
+			}
+			else if (q.op == OP_INDEXASSIGN) {
+				this->generateIndexAssign( q, reg1, reg2, messageTable[i]);
+			}
+			else if (q.op == OP_ASSIGNINDEX) {
+				this->generateAssignIndex( q,  reg2, messageTable[i]);
+			}
+			else if (q.op == OP_PLUS) {
+				this->generatePlus(q, reg1, reg2, messageTable[i]);
+			}
+			else if (q.op == OP_MINUS) {
+				this->generateMinus(q, reg1, reg2, messageTable[i]);
+			}
+			else if (q.op == OP_AND) {
+				this->generateAnd(q, reg1, reg2, messageTable[i]);
+			}
+			else if (q.op == OP_OR) {
+				this->generateOr(q, reg1, reg2, messageTable[i]);
+			}
+			else if (q.op == OP_XOR) {
+				this->generateXor(q, reg1, reg2, messageTable[i]);
+			}
+			else if (q.op == OP_MUL) {
+				this->generateMul(q, reg1, reg2, messageTable[i]);
+			}
+			else if (q.op == OP_DIVIDE) {
+				this->generateDivide(q, reg1, reg2, messageTable[i]);
+			}
+			else {
+				cerr << "ERROR: 目标代码生成器遇到非法的中间代码" << endl;
+				exit(ERROR_OBJECTCODEGENERATER);
+			}
+		}
+		if (!jEnd) {
+			this->endBlock();
+		}
+	}
+}
+
+void ObjectCodeGenerater::printObjectCode(const string& filename, const bool& isOut) {
+	fstream fout(filename, ios::out);
+	if (!fout.is_open()) {
+		cerr << "无法打开目标代码文件" << filename << endl;
+		exit(ERROR_OPEN_FILE);
+	}
+	for (int i = 0; i < this->objectCode.size(); i++) {
+		if (isOut) {
+			cout << this->objectCode[i] << endl;
+		}
+		fout << this->objectCode[i] << endl;
+	}
+	fout.close();
+}
+
+/*============================== ObjectCodeGenerater ==============================*/

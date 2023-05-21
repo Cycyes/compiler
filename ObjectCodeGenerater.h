@@ -3,78 +3,164 @@
 
 #include "Optimizer.h"
 
-class ObjectCodeGenerater {
+typedef pair<int, bool> Tag;
+
+class MessageTableItem {
+	/*=== Static Consts ===*/
+public:
+	static const int arg1Pos = 0;
+	static const int arg2Pos = 1;
+	static const int resultPos = 2;
+	static const int tagSize = 3;
+
 	/*=== Functions ===*/
+public:
+	MessageTableItem();
+	MessageTableItem(const int& id, const Quaternion& q);
+	~MessageTableItem();
+
+	/*=== Members ===*/
+public:
+	int id;
+	Quaternion q;
+	Tag tags[tagSize];
+};
+
+class ObjectCodeGenerater {
+	/*=== Static Consts ===*/
+public:
+	static const int bufferSize = 1024;
+
+	static const int Type_Jl = 1;
+	static const int Type_Jle = 2;
+	static const int Type_Jg = 3;
+	static const int Type_Jge = 4;
+	static const int Type_Jeq = 5;
+	static const int Type_Jne = 6;
+
+	static const int Type_Plus = 1;
+	static const int Type_Minus = 2;
+	static const int Type_And = 3;
+	static const int Type_Or = 4;
+	static const int Type_Xor = 5;
+	static const int Type_Mul = 6;
+	static const int Type_Divide = 7;
+
+	static const int ObjectCodeHeadDataSpacePos = 1;
+	static const int ObjectCodeHeadStackSpacePos = 2;
+	static const int ObjectCodeHeadTempSpacePos = 3;
+	static const int ObjectCodeHeadSize = 20;
+	const string ObjectCodeHead[ObjectCodeHeadSize] = { 
+		".data",
+		"data:.space ",
+		"stack:.space ",
+		"temp:.space ",
+		".text",
+		"j B0",
+		"B1:",
+		"nop",
+		"j B1",
+		"nop",
+		"B2:",
+		"jal Fmain",
+		"nop",
+		"break",
+		"B0:",
+		"addi $gp,$zero,0",
+		"addi $fp,$zero,0",
+		"addi $sp,$zero,4",
+		"j B2",
+		"nop"
+	};
+
+	const string OP_NOP = "nop";
+	const string OP_J = "j";
+	const string OP_JAL = "jal";
+
+	const string OP_BREAK = "break";
+	const string OP_RET = "ret";
+	const string OP_JNZ = "jnz";
+	const string OP_JL = "j<";
+	const string OP_JLE = "j<=";
+	const string OP_JG = "j>";
+	const string OP_JGE = "j>=";
+	const string OP_JEQ = "j==";
+	const string OP_JNE = "j!=";
+	const string OP_ASSIGN = ":=";
+	const string OP_INDEXASSIGN = "[]=";
+	const string OP_ASSIGNINDEX = "=[]";
+	const string OP_PLUS = "+";
+	const string OP_MINUS = "-";
+	const string OP_AND = "&";
+	const string OP_OR = "|";
+	const string OP_XOR = "^";
+	const string OP_MUL = "*";
+	const string OP_DIVIDE = "/";
+
+
+	/*=== Functions ===*/
+private:
+	void generateJcmp(bool& jEnd, const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item, const int& type);
+	void generateCalc(const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item, const int& type);
+
+	void generateNop();
+	void generateJ(bool& jEnd, const Quaternion& q);
+	void generateJal(bool& jEnd, const Quaternion& q);
+
+	void generateBreak(bool& jEnd);
+	void generateRet(bool& jEnd);
+	void generateJnz(bool& jEnd, const Quaternion& q, const string& reg, const MessageTableItem& item);
+	void generateJl(bool& jEnd, const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item);
+	void generateJle(bool& jEnd, const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item);
+	void generateJg(bool& jEnd, const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item);
+	void generateJge(bool& jEnd, const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item);
+	void generateJeq(bool& jEnd, const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item);
+	void generateJne(bool& jEnd, const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item);
+	void generateAssign(const Quaternion& q, const string& reg1, const MessageTableItem& item);
+	void generateIndexAssign(const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item);
+	void generateAssignIndex(const Quaternion& q, const string& reg2, const MessageTableItem& item);
+	void generatePlus(const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item);
+	void generateMinus(const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item);
+	void generateAnd(const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item);
+	void generateOr(const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item);
+	void generateXor(const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item);
+	void generateMul(const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item);
+	void generateDivide(const Quaternion& q, const string& reg1, const string& reg2, const MessageTableItem& item);
+
+	void emit(string code);
+	void endBlock();
+	void updateVALUE(const Tag& tag, const string& R, const string& V, const bool& flag);
+	string getReg(const string& result);
+
+	vector<MessageTableItem> generateMessageTable(const int& blkno);
+
+	void preGenerate();
+
+	string allocateRegGVT(const string& arg, const char& c, const int& i);
+	string allocateReg(const string& arg, const string& op, const int& i, const string& regAllocated = "");
+
+public:
+	ObjectCodeGenerater(const vector<Quaternion> intermediateCode, const vector<BlockItem>& block, const int& stackSize);
+	~ObjectCodeGenerater();
+
+	void generateObjectCode();
+
+	void printObjectCode(const string& filename = "./output/ObjectCode.txt", const bool& isOut = false);
 
 	/*=== Members ===*/
 private:
 	vector<Quaternion> intermediateCode;
+	vector<BlockItem> block;
 
-
-
-};
-
-#define STACK string("stack")
-#define DATA string("data")
-#define TEMP string("temp")
-struct messageTableItem
-{
-	int no;
-	Quaternion TAS;
-	pair<int, bool> arg1_tag;
-	pair<int, bool> arg2_tag;
-	pair<int, bool> result_tag;
-};
-struct analysisHistoryItem {
-	Quaternion TAS;
-	vector<string> object_codes;
+	map<string, vector<string>> AVALUE;
 	map<string, vector<pair<string, int>>> RVALUE;
-	map<string, vector<string>> AVALUE;
-};
-class objectCodeGenerator
-{
-private:
-	vector<Quaternion> intermediate_code;
-	vector<BlockItem> block_group;
-	map<string, vector<pair<string, int>>> RVALUE = {
-		{"$t0",vector<pair<string,int>>{}},
-		{"$t1",vector<pair<string,int>>{}},
-		{"$t2",vector<pair<string,int>>{}},
-		{"$t3",vector<pair<string,int>>{}},
-		{"$t4",vector<pair<string,int>>{}},
-		{"$t5",vector<pair<string,int>>{}},
-		{"$t6",vector<pair<string,int>>{}},
-		{"$t7",vector<pair<string,int>>{}}
-	};
-	map<string, vector<string>> AVALUE;
-	vector<string> new_code;
-	bool is_num(string str)
-	{
-		stringstream sin(str);
-		int d;
-		char c;
-		if (!(sin >> d))
-			return false;
-		if (sin >> c)
-			return false;
-		return true;
-	}
-	vector<messageTableItem> geneMessageTable(int block_no);
-	void emit(string code);
-	string getREG(string result);
-	void freshRA(pair<int, bool> tag, string R, string V, bool value_changed);
-	void endBlock();
+
 public:
-	int stack_buf_size = 4 * 1024 * 32;
-	int data_buf_size = 4 * 1024 * 32;
-	int temp_buf_size = 4 * 1024 * 32;
-	vector<string> object_code;
-	vector<messageTableItem> messageTableHistory;
-	vector<analysisHistoryItem> analysisHistory;
-	objectCodeGenerator(vector<Quaternion> ic, vector<BlockItem> bg, int stack_size);
-	void geneObjectCode();
-	void showMessageTableHistory();
-	void showAnalysisHistory();
-	void showObjectCode();
+	int stackBufferSize;
+	int dataBufferSize;
+	int tempBufferSize;
+
+	vector<string> objectCode;
 };
-#endif // !OBJECT_CODE
+
+#endif

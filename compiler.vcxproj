@@ -136,6 +136,7 @@
     <ClInclude Include="SyntaxAnalyser.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Common.cpp" />
     <ClCompile Include="IntermediateCodeGenerater.cpp" />
     <ClCompile Include="LexcalAnalyser.cpp" />
     <ClCompile Include="main.cpp" />
